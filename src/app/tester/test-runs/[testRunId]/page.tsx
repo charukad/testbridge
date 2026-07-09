@@ -17,14 +17,13 @@ export default async function TestRunDetailPage({ params }: { params: Promise<{ 
   
   const run = await TestRun.findOne({ 
     _id: testRunId,
-    assignedTo: userId
   }).populate('projectId', 'name');
 
   if (!run) return (
     <div className="flex flex-col items-center justify-center py-20">
       <AlertTriangle className="text-red-500 w-12 h-12 mb-4" />
       <h2 className="text-xl font-bold text-slate-900">Test run not found</h2>
-      <p className="text-slate-500 mt-2">The test run may have been deleted or is not assigned to you.</p>
+      <p className="text-slate-500 mt-2">The test run may have been deleted or is no longer available.</p>
       <Link href="/tester/tasks" className="mt-6 text-indigo-600 font-medium hover:underline">
         Return to My Tasks
       </Link>
@@ -33,11 +32,13 @@ export default async function TestRunDetailPage({ params }: { params: Promise<{ 
 
   const env = await Environment.findById(run.environmentId);
   const testCases = await TestCase.find({ _id: { $in: run.testCaseIds } }).lean();
-  const results = await TestResult.find({ testRunId: run._id }).lean();
+  const results = await TestResult.find({ testRunId: run._id })
+    .populate("testerId", "name email")
+    .lean();
 
-  const getResultStatus = (tcId: string) => {
+  const getResult = (tcId: string) => {
     const result = results.find(r => r.testCaseId.toString() === tcId.toString());
-    return result ? result.result : "Pending";
+    return result;
   };
 
   const completedCount = results.length;
@@ -57,7 +58,7 @@ export default async function TestRunDetailPage({ params }: { params: Promise<{ 
           <ArrowLeft size={16} className="mr-1.5" />
           Back to Tasks
         </Link>
-        {run.status !== 'Completed' && run.status !== 'Submitted' && (
+        {run.status !== 'Completed' && (
           <Link href={`/tester/submit/${run._id}`}>
             <button className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm">
               <Send size={16} className="mr-2" />
@@ -121,8 +122,13 @@ export default async function TestRunDetailPage({ params }: { params: Promise<{ 
               
               <div className="space-y-3">
                 {testCases.map((tc) => {
-                  const status = getResultStatus(tc._id.toString());
-                  const isCompleted = status !== "Pending";
+                  const existingResult: any = getResult(tc._id.toString());
+                  const status = existingResult ? existingResult.result : "Pending";
+                  const isCompleted = Boolean(existingResult);
+                  const tester = existingResult?.testerId as { _id?: string; name?: string; email?: string } | undefined;
+                  const resultTesterId = tester?._id?.toString() || existingResult?.testerId?.toString();
+                  const isTakenByOtherTester = isCompleted && resultTesterId !== userId;
+                  const testerName = tester?.name || tester?.email || "another tester";
                   
                   return (
                     <div key={tc._id.toString()} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-slate-200 rounded-lg bg-white hover:border-indigo-300 transition-colors shadow-sm group">
@@ -155,14 +161,19 @@ export default async function TestRunDetailPage({ params }: { params: Promise<{ 
                           </Link>
                         ) : (
                           <div className="flex items-center space-x-3">
-                            <span className={`text-sm font-medium px-2.5 py-1 rounded-md ${
+                            <div className="flex flex-col items-end gap-1">
+                              <span className={`text-sm font-medium px-2.5 py-1 rounded-md ${
                               status === 'Pass' ? 'bg-green-50 text-green-700' :
                               status === 'Fail' ? 'bg-red-50 text-red-700' :
                               status === 'Blocked' ? 'bg-orange-50 text-orange-700' : 'bg-slate-100 text-slate-700'
                             }`}>
-                              {status}
-                            </span>
-                            {run.status !== 'Completed' && run.status !== 'Submitted' && (
+                                {status}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                {isTakenByOtherTester ? `Taken by ${testerName}` : "Done by you"}
+                              </span>
+                            </div>
+                            {!isTakenByOtherTester && run.status !== 'Completed' && (
                               <Link href={`/tester/test-runs/${run._id}/cases/${tc._id}`}>
                                 <button className="text-indigo-600 hover:text-indigo-800 text-sm font-medium hover:underline">
                                   Edit

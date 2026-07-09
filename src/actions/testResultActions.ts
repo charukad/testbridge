@@ -25,6 +25,26 @@ export async function submitTestResult(formData: FormData) {
   const note = formData.get("note") as string;
   const severity = formData.get("severity") as string || "High";
   const files = formData.getAll("screenshots") as File[];
+
+  const testRun = await TestRun.findOne({
+    _id: testRunId,
+    testCaseIds: testCaseId,
+  });
+
+  if (!testRun) {
+    throw new Error("Test run or test case not found.");
+  }
+
+  if (testRun.status === "Completed") {
+    throw new Error("This test run is already completed.");
+  }
+
+  // A saved result claims the case for that tester. Other testers can see it, but cannot overwrite it.
+  let testResult = await TestResult.findOne({ testRunId, testCaseId });
+
+  if (testResult && testResult.testerId.toString() !== session.user.id) {
+    throw new Error("This test case has already been taken by another tester.");
+  }
   
   // Upload screenshots to Cloudinary
   const screenshotUrls: string[] = [];
@@ -42,9 +62,6 @@ export async function submitTestResult(formData: FormData) {
     }
   }
 
-  // Check if result already exists to update it (re-testing or editing before submit)
-  let testResult = await TestResult.findOne({ testRunId, testCaseId });
-  
   if (testResult) {
     testResult.result = result;
     testResult.actualResult = actualResult;
@@ -54,21 +71,28 @@ export async function submitTestResult(formData: FormData) {
     await testResult.save();
   } else {
     // Save new Test Result
-    testResult = await TestResult.create({
-      testRunId,
-      projectId,
-      testCaseId,
-      testerId: session.user.id,
-      result,
-      actualResult,
-      note,
-      severity: result === "Fail" ? severity : undefined,
-      screenshots: screenshotUrls,
-    });
+    try {
+      testResult = await TestResult.create({
+        testRunId,
+        projectId,
+        testCaseId,
+        testerId: session.user.id,
+        result,
+        actualResult,
+        note,
+        severity: result === "Fail" ? severity : undefined,
+        screenshots: screenshotUrls,
+      });
+    } catch (error: any) {
+      if (error?.code === 11000) {
+        throw new Error("This test case has already been taken by another tester.");
+      }
+
+      throw error;
+    }
   }
 
   // Update TestRun status if it's pending
-  const testRun = await TestRun.findById(testRunId);
   if (testRun && testRun.status === "Pending") {
     testRun.status = "In Progress";
     await testRun.save();

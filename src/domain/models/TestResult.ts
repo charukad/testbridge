@@ -32,4 +32,6 @@ const TestResultSchema: Schema = new Schema({
   issueId: { type: Schema.Types.ObjectId, ref: 'Issue' },
 }, { timestamps: true });
 
+TestResultSchema.index({ testRunId: 1, testCaseId: 1 }, { unique: true });
+
 export default mongoose.models.TestResult || mongoose.model<ITestResult>('TestResult', TestResultSchema);

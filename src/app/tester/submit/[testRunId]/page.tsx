@@ -1,5 +1,3 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import TestRun from "@/domain/models/TestRun";
 import TestResult from "@/domain/models/TestResult";
@@ -9,15 +7,11 @@ import { ArrowLeft, Send, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default async function SubmitTestRunPage({ params }: { params: Promise<{ testRunId: string }> }) {
-  const session = await getServerSession(authOptions);
   const { testRunId } = await params;
   await dbConnect();
   
-  const userId = (session?.user as any)?.id;
-  
   const run = await TestRun.findOne({ 
     _id: testRunId,
-    assignedTo: userId
   }).populate('projectId', 'name');
 
   if (!run) return (

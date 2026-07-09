@@ -22,14 +22,13 @@ export default async function TesterTasks() {
     redirect("/login");
   }
   
-  const userId = session.user.id;
   let allRuns: TaskRun[] = [];
   
   try {
     await dbConnect();
 
-    const allRunsRaw = await TestRun.find({ 
-      assignedTo: userId,
+    const allRunsRaw = await TestRun.find({
+      status: { $ne: "Completed" },
     })
       .populate("projectId", "name")
       .populate("environmentId", "name")
@@ -59,8 +58,8 @@ export default async function TesterTasks() {
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Tasks</h1>
-          <p className="text-sm text-slate-500 mt-1">All test runs assigned to you.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Available Tasks</h1>
+          <p className="text-sm text-slate-500 mt-1">Open test runs shared with all testers.</p>
         </div>
       </div>
 
@@ -81,7 +80,7 @@ export default async function TesterTasks() {
               {allRuns.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-10 text-center text-slate-500 text-sm">
-                    No tasks found.
+                    No open test runs found.
                   </td>
                 </tr>
               ) : (
@@ -120,7 +119,7 @@ export default async function TesterTasks() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {run.status === 'Completed' || run.status === 'Submitted' ? (
+                      {run.status === 'Completed' ? (
                         <Link href={`/tester/test-runs/${run._id}`}>
                           <button className="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
                             View Summary

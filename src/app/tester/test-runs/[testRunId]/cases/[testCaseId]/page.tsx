@@ -16,23 +16,23 @@ export default async function TestExecutionPage({ params }: { params: Promise<{ 
   const userId = (session?.user as any)?.id;
   const run = await TestRun.findOne({
     _id: testRunId,
-    assignedTo: userId,
     testCaseIds: testCaseId,
   });
 
   if (!run) return (
     <div className="flex flex-col items-center justify-center py-20">
       <AlertTriangle className="text-red-500 w-12 h-12 mb-4" />
-      <h2 className="text-xl font-bold text-slate-900">Test case not assigned</h2>
-      <p className="text-slate-500 mt-2">This case is not part of your assigned test run.</p>
+      <h2 className="text-xl font-bold text-slate-900">Test case not available</h2>
+      <p className="text-slate-500 mt-2">This case is not part of the selected test run.</p>
       <Link href={`/tester/test-runs/${testRunId}`} className="mt-6 text-indigo-600 font-medium hover:underline">
         Back to Test Run
       </Link>
     </div>
   );
   
-  const [testCase, existingResults] = await Promise.all([
+  const [testCase, existingResult, existingResults] = await Promise.all([
     TestCase.findById(testCaseId),
+    TestResult.findOne({ testRunId, testCaseId }).populate("testerId", "name email").lean(),
     TestResult.find({ testRunId }).select("testCaseId").lean(),
   ]);
 
@@ -45,6 +45,35 @@ export default async function TestExecutionPage({ params }: { params: Promise<{ 
       </Link>
     </div>
   );
+
+  if (run.status === "Completed") return (
+    <div className="flex flex-col items-center justify-center py-20">
+      <AlertTriangle className="text-orange-500 w-12 h-12 mb-4" />
+      <h2 className="text-xl font-bold text-slate-900">Test run completed</h2>
+      <p className="text-slate-500 mt-2">This test run is already completed and can no longer be edited.</p>
+      <Link href={`/tester/test-runs/${testRunId}`} className="mt-6 text-indigo-600 font-medium hover:underline">
+        Back to Test Run
+      </Link>
+    </div>
+  );
+
+  const existingResultTester: any = existingResult?.testerId;
+  const existingResultTesterId = existingResultTester?._id?.toString() || existingResult?.testerId?.toString();
+
+  if (existingResult && existingResultTesterId !== userId) {
+    const testerName = existingResultTester?.name || existingResultTester?.email || "another tester";
+
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <AlertTriangle className="text-orange-500 w-12 h-12 mb-4" />
+        <h2 className="text-xl font-bold text-slate-900">Test case already taken</h2>
+        <p className="text-slate-500 mt-2">This case was already recorded by {testerName}.</p>
+        <Link href={`/tester/test-runs/${testRunId}`} className="mt-6 text-indigo-600 font-medium hover:underline">
+          Back to Test Run
+        </Link>
+      </div>
+    );
+  }
 
   const completedCaseIds = new Set(existingResults.map((result) => result.testCaseId.toString()));
   const orderedCaseIds = run.testCaseIds.map((id: unknown) => id?.toString()).filter(Boolean) as string[];

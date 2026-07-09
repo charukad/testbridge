@@ -90,11 +90,10 @@ export async function submitTestRun(testRunId: string) {
 
   const run = await TestRun.findOne({
     _id: testRunId,
-    assignedTo: session.user.id,
   });
 
   if (!run) {
-    throw new Error("Test run not found or not assigned to you.");
+    throw new Error("Test run not found.");
   }
 
   // If all cases have results, mark Completed; otherwise Submitted

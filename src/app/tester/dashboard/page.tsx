@@ -5,7 +5,7 @@ import TestRun from "@/domain/models/TestRun";
 import TestResult from "@/domain/models/TestResult";
 import RetestTask from "@/domain/models/RetestTask";
 import Link from "next/link";
-import { PlayCircle, Clock, CheckCircle, RotateCcw, FileCheck, AlertCircle } from "lucide-react";
+import { PlayCircle, Clock, CheckCircle, RotateCcw, FileCheck } from "lucide-react";
 
 export default async function TesterDashboard() {
   const session = await getServerSession(authOptions);
@@ -14,17 +14,17 @@ export default async function TesterDashboard() {
   const userId = (session?.user as any)?.id;
 
   let assignedRuns: any[] = [];
-  let completedRunsCount = 0;
+  let completedResultsCount = 0;
   let retestTasks: any[] = [];
 
   try {
-    [assignedRuns, completedRunsCount, retestTasks] = await Promise.all([
-      TestRun.find({ assignedTo: userId, status: { $in: ["Pending", "In Progress"] } })
+    [assignedRuns, completedResultsCount, retestTasks] = await Promise.all([
+      TestRun.find({ status: { $in: ["Pending", "In Progress", "Submitted"] } })
         .populate("projectId", "name")
         .populate("environmentId", "name")
         .sort({ deadline: 1, createdAt: 1 })
         .lean(),
-      TestRun.countDocuments({ assignedTo: userId, status: "Completed" }),
+      TestResult.countDocuments({ testerId: userId }),
       RetestTask.find({ assignedTo: userId, status: { $in: ["Pending", "In Progress"] } })
         .populate("issueId", "issueNumber title")
         .populate("projectId", "name")
@@ -42,7 +42,7 @@ export default async function TesterDashboard() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Tester Dashboard</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Welcome back, <span className="font-semibold text-slate-700">{session?.user?.name}</span>. Here&apos;s what&apos;s assigned to you.
+          Welcome back, <span className="font-semibold text-slate-700">{session?.user?.name}</span>. Here&apos;s the shared testing pool.
         </p>
       </div>
 
@@ -54,7 +54,7 @@ export default async function TesterDashboard() {
           </div>
           <div>
             <div className="text-2xl font-bold text-slate-900">{assignedRuns.length}</div>
-            <div className="text-sm font-medium text-slate-500">Pending Tasks</div>
+            <div className="text-sm font-medium text-slate-500">Open Runs</div>
           </div>
         </div>
 
@@ -73,8 +73,8 @@ export default async function TesterDashboard() {
             <CheckCircle size={22} />
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-900">{completedRunsCount}</div>
-            <div className="text-sm font-medium text-slate-500">Completed Runs</div>
+            <div className="text-2xl font-bold text-slate-900">{completedResultsCount}</div>
+            <div className="text-sm font-medium text-slate-500">Cases Done</div>
           </div>
         </div>
 
@@ -125,11 +125,11 @@ export default async function TesterDashboard() {
         </div>
       )}
 
-      {/* Assigned Test Runs */}
+      {/* Shared Test Runs */}
       <div>
         <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
           <PlayCircle size={18} className="text-indigo-500" />
-          Assigned Test Runs
+          Available Test Runs
         </h2>
 
         {assignedRuns.length === 0 ? (
@@ -138,7 +138,7 @@ export default async function TesterDashboard() {
               <FileCheck size={32} />
             </div>
             <h3 className="text-base font-medium text-slate-900">You&apos;re all caught up!</h3>
-            <p className="mt-1 text-sm text-slate-500">No pending test runs assigned to you right now.</p>
+            <p className="mt-1 text-sm text-slate-500">No open test runs are available right now.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -164,7 +164,7 @@ export default async function TesterDashboard() {
                     </div>
                     <div className="flex gap-2 text-slate-500">
                       <span className="font-medium text-slate-700 shrink-0">Cases:</span>
-                      {run.testCaseIds?.length || 0} assigned
+                      {run.testCaseIds?.length || 0} total
                     </div>
                   </div>
                 </div>
