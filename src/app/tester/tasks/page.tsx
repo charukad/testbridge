@@ -1,5 +1,6 @@
 import dbConnect from "@/lib/mongoose";
 import TestRun from "@/domain/models/TestRun";
+import TestCase from "@/domain/models/TestCase";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Clock, AlertTriangle } from "lucide-react";
@@ -11,7 +12,8 @@ type TaskRun = {
   status: string;
   deadline?: string;
   testCaseIds?: string[];
-  projectId?: { name?: string };
+  totalTestCases?: number;
+  projectId?: { _id?: string; name?: string };
   environmentId?: { name?: string };
 };
 
@@ -35,7 +37,14 @@ export default async function TesterTasks() {
       .sort({ createdAt: -1 })
       .lean();
 
-    allRuns = JSON.parse(JSON.stringify(allRunsRaw)) as TaskRun[];
+    const serializedRuns = JSON.parse(JSON.stringify(allRunsRaw)) as TaskRun[];
+
+    allRuns = await Promise.all(serializedRuns.map(async (run) => ({
+      ...run,
+      totalTestCases: run.projectId?._id
+        ? await TestCase.countDocuments({ projectId: run.projectId._id })
+        : run.testCaseIds?.length || 0,
+    })));
   } catch (error) {
     console.error("Tester tasks load error:", error);
 
@@ -88,7 +97,7 @@ export default async function TesterTasks() {
                   <tr key={run._id.toString()} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="text-sm font-bold text-slate-900">{run.name}</div>
-                      <div className="text-xs text-slate-500 mt-1">{run.testCaseIds?.length || 0} test cases</div>
+                      <div className="text-xs text-slate-500 mt-1">{run.totalTestCases || 0} test cases</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-slate-900">{run.projectId?.name || 'Unknown'}</div>

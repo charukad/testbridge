@@ -16,14 +16,13 @@ export default async function TestExecutionPage({ params }: { params: Promise<{ 
   const userId = (session?.user as any)?.id;
   const run = await TestRun.findOne({
     _id: testRunId,
-    testCaseIds: testCaseId,
   });
 
   if (!run) return (
     <div className="flex flex-col items-center justify-center py-20">
       <AlertTriangle className="text-red-500 w-12 h-12 mb-4" />
-      <h2 className="text-xl font-bold text-slate-900">Test case not available</h2>
-      <p className="text-slate-500 mt-2">This case is not part of the selected test run.</p>
+      <h2 className="text-xl font-bold text-slate-900">Test run not available</h2>
+      <p className="text-slate-500 mt-2">This test run may have been deleted or is no longer available.</p>
       <Link href={`/tester/test-runs/${testRunId}`} className="mt-6 text-indigo-600 font-medium hover:underline">
         Back to Test Run
       </Link>
@@ -31,7 +30,7 @@ export default async function TestExecutionPage({ params }: { params: Promise<{ 
   );
   
   const [testCase, existingResult, existingResults] = await Promise.all([
-    TestCase.findById(testCaseId),
+    TestCase.findOne({ _id: testCaseId, projectId: run.projectId }),
     TestResult.findOne({ testRunId, testCaseId }).populate("testerId", "name email").lean(),
     TestResult.find({ testRunId }).select("testCaseId").lean(),
   ]);
@@ -76,7 +75,11 @@ export default async function TestExecutionPage({ params }: { params: Promise<{ 
   }
 
   const completedCaseIds = new Set(existingResults.map((result) => result.testCaseId.toString()));
-  const orderedCaseIds = run.testCaseIds.map((id: unknown) => id?.toString()).filter(Boolean) as string[];
+  const projectTestCases = await TestCase.find({ projectId: run.projectId })
+    .select("_id")
+    .sort({ testCaseId: 1, createdAt: 1 })
+    .lean();
+  const orderedCaseIds = projectTestCases.map((tc) => tc._id.toString());
   const currentIndex = orderedCaseIds.indexOf(testCaseId);
   const nextTestCaseId = [
     ...orderedCaseIds.slice(currentIndex + 1),

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import TestRun from "@/domain/models/TestRun";
 import TestResult from "@/domain/models/TestResult";
+import TestCase from "@/domain/models/TestCase";
 import RetestTask from "@/domain/models/RetestTask";
 import Link from "next/link";
 import { PlayCircle, Clock, CheckCircle, RotateCcw, FileCheck } from "lucide-react";
@@ -31,6 +32,13 @@ export default async function TesterDashboard() {
         .sort({ createdAt: -1 })
         .lean(),
     ]);
+
+    assignedRuns = await Promise.all(assignedRuns.map(async (run) => ({
+      ...run,
+      totalTestCases: run.projectId?._id
+        ? await TestCase.countDocuments({ projectId: run.projectId._id })
+        : run.testCaseIds?.length || 0,
+    })));
   } catch (err) {
     console.error("Tester dashboard DB error:", err);
   }
@@ -164,7 +172,7 @@ export default async function TesterDashboard() {
                     </div>
                     <div className="flex gap-2 text-slate-500">
                       <span className="font-medium text-slate-700 shrink-0">Cases:</span>
-                      {run.testCaseIds?.length || 0} total
+                      {run.totalTestCases || 0} total
                     </div>
                   </div>
                 </div>

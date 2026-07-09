@@ -1,6 +1,7 @@
 import dbConnect from "@/lib/mongoose";
 import TestRun from "@/domain/models/TestRun";
 import TestResult from "@/domain/models/TestResult";
+import TestCase from "@/domain/models/TestCase";
 import Link from "next/link";
 import { submitTestRun } from "@/actions/testRunActions";
 import { ArrowLeft, Send, AlertTriangle } from "lucide-react";
@@ -24,10 +25,12 @@ export default async function SubmitTestRunPage({ params }: { params: Promise<{ 
     </div>
   );
 
-  const results = await TestResult.find({ testRunId: run._id });
+  const [results, totalCount] = await Promise.all([
+    TestResult.find({ testRunId: run._id }),
+    TestCase.countDocuments({ projectId: run.projectId }),
+  ]);
   
   const completedCount = results.length;
-  const totalCount = run.testCaseIds.length;
   
   const notTestedCount = totalCount - completedCount + results.filter(r => r.result === "Not Tested").length;
   const passedCount = results.filter(r => r.result === "Pass").length;

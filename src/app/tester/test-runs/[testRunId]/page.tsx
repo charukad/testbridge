@@ -31,7 +31,9 @@ export default async function TestRunDetailPage({ params }: { params: Promise<{ 
   );
 
   const env = await Environment.findById(run.environmentId);
-  const testCases = await TestCase.find({ _id: { $in: run.testCaseIds } }).lean();
+  const testCases = await TestCase.find({ projectId: run.projectId })
+    .sort({ testCaseId: 1, createdAt: 1 })
+    .lean();
   const results = await TestResult.find({ testRunId: run._id })
     .populate("testerId", "name email")
     .lean();
@@ -42,7 +44,7 @@ export default async function TestRunDetailPage({ params }: { params: Promise<{ 
   };
 
   const completedCount = results.length;
-  const totalCount = run.testCaseIds.length;
+  const totalCount = testCases.length;
   const progressPercent = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
   const passedCount = results.filter(r => r.result === "Pass").length;

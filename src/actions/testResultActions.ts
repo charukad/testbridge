@@ -26,17 +26,23 @@ export async function submitTestResult(formData: FormData) {
   const severity = formData.get("severity") as string || "High";
   const files = formData.getAll("screenshots") as File[];
 
-  const testRun = await TestRun.findOne({
-    _id: testRunId,
-    testCaseIds: testCaseId,
-  });
+  const testRun = await TestRun.findById(testRunId);
 
   if (!testRun) {
-    throw new Error("Test run or test case not found.");
+    throw new Error("Test run not found.");
   }
 
   if (testRun.status === "Completed") {
     throw new Error("This test run is already completed.");
+  }
+
+  const runnableTestCase = await TestCase.findOne({
+    _id: testCaseId,
+    projectId: testRun.projectId,
+  });
+
+  if (!runnableTestCase) {
+    throw new Error("Test case not found in this project.");
   }
 
   // A saved result claims the case for that tester. Other testers can see it, but cannot overwrite it.

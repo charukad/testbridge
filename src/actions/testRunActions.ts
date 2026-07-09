@@ -3,6 +3,7 @@
 import dbConnect from "@/lib/mongoose";
 import TestRun from "@/domain/models/TestRun";
 import TestResult from "@/domain/models/TestResult";
+import TestCase from "@/domain/models/TestCase";
 import ActivityLog from "@/domain/models/ActivityLog";
 import { requireRole } from "@/lib/session";
 import { redirect } from "next/navigation";
@@ -96,9 +97,10 @@ export async function submitTestRun(testRunId: string) {
     throw new Error("Test run not found.");
   }
 
-  // If all cases have results, mark Completed; otherwise Submitted
+  // If all project cases have results, mark Completed; otherwise Submitted
   const resultCount = await TestResult.countDocuments({ testRunId });
-  const allDone = resultCount >= run.testCaseIds.length;
+  const totalProjectCases = await TestCase.countDocuments({ projectId: run.projectId });
+  const allDone = totalProjectCases > 0 && resultCount >= totalProjectCases;
 
   run.status = allDone ? "Completed" : "Submitted";
   await run.save();
