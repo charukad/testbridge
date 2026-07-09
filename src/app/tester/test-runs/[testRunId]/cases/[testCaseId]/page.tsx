@@ -1,17 +1,41 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
+import TestRun from "@/domain/models/TestRun";
 import TestCase from "@/domain/models/TestCase";
+import TestResult from "@/domain/models/TestResult";
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import ExecutionForm from "./ExecutionForm";
 
 export default async function TestExecutionPage({ params }: { params: Promise<{ testRunId: string, testCaseId: string }> }) {
-  await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
   const { testRunId, testCaseId } = await params;
   await dbConnect();
+
+  const userId = (session?.user as any)?.id;
+  const run = await TestRun.findOne({
+    _id: testRunId,
+    assignedTo: userId,
+    testCaseIds: testCaseId,
+  });
+
+  if (!run) return (
+    <div className="flex flex-col items-center justify-center py-20">
+      <AlertTriangle className="text-red-500 w-12 h-12 mb-4" />
+      <h2 className="text-xl font-bold text-slate-900">Test case not assigned</h2>
+      <p className="text-slate-500 mt-2">This case is not part of your assigned test run.</p>
+      <Link href={`/tester/test-runs/${testRunId}`} className="mt-6 text-indigo-600 font-medium hover:underline">
+        Back to Test Run
+      </Link>
+    </div>
+  );
   
-  const testCase = await TestCase.findById(testCaseId);
+  const [testCase, existingResults] = await Promise.all([
+    TestCase.findById(testCaseId),
+    TestResult.find({ testRunId }).select("testCaseId").lean(),
+  ]);
+
   if (!testCase) return (
     <div className="flex flex-col items-center justify-center py-20">
       <AlertTriangle className="text-red-500 w-12 h-12 mb-4" />
@@ -21,6 +45,14 @@ export default async function TestExecutionPage({ params }: { params: Promise<{ 
       </Link>
     </div>
   );
+
+  const completedCaseIds = new Set(existingResults.map((result) => result.testCaseId.toString()));
+  const orderedCaseIds = run.testCaseIds.map((id: unknown) => id?.toString()).filter(Boolean) as string[];
+  const currentIndex = orderedCaseIds.indexOf(testCaseId);
+  const nextTestCaseId = [
+    ...orderedCaseIds.slice(currentIndex + 1),
+    ...orderedCaseIds.slice(0, Math.max(currentIndex, 0)),
+  ].find((id) => id !== testCaseId && !completedCaseIds.has(id));
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -93,6 +125,7 @@ export default async function TestExecutionPage({ params }: { params: Promise<{ 
             testRunId={testRunId} 
             projectId={testCase.projectId.toString()}
             testCaseId={testCaseId} 
+            nextTestCaseId={nextTestCaseId}
           />
         </div>
       </div>
