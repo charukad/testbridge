@@ -4,8 +4,8 @@ import dbConnect from "@/lib/mongoose";
 import TestRun from "@/domain/models/TestRun";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 export async function createTestRun(formData: FormData) {
   const session = await getServerSession(authOptions);
@@ -15,39 +15,52 @@ export async function createTestRun(formData: FormData) {
 
   await dbConnect();
 
-  const projectId = formData.get("projectId") as string;
   const name = formData.get("name") as string;
-  const description = formData.get("description") as string;
+  const deadline = formData.get("deadline") as string;
   const environmentId = formData.get("environmentId") as string;
   const assignedTo = formData.get("assignedTo") as string;
-  const testCaseIdsJson = formData.get("testCaseIds") as string;
-  const deadline = formData.get("deadline") as string;
+  const description = formData.get("description") as string;
   const instructions = formData.get("instructions") as string;
+  const projectId = formData.get("projectId") as string;
+  const testCaseIdsStr = formData.get("testCaseIds") as string;
 
-  if (!name || !projectId || !environmentId || !assignedTo || !testCaseIdsJson) {
-    throw new Error("Missing required fields");
-  }
+  const testCaseIds = JSON.parse(testCaseIdsStr);
 
-  let testCaseIds = [];
-  try {
-    testCaseIds = JSON.parse(testCaseIdsJson);
-  } catch (e) {
-    throw new Error("Invalid test cases data");
-  }
-
-  await TestRun.create({
-    projectId,
+  const testRun = await TestRun.create({
     name,
-    description,
+    projectId,
     environmentId,
-    assignedBy: (session.user as any).id,
-    assignedTo,
     testCaseIds,
-    status: "Pending",
-    deadline: deadline ? new Date(deadline) : undefined,
+    assignedTo,
+    assignedBy: (session.user as any).id,
+    description,
     instructions,
+    deadline: deadline ? new Date(deadline) : undefined,
+    status: "Pending",
   });
 
   revalidatePath(`/developer/projects/${projectId}/test-runs`);
   redirect(`/developer/projects/${projectId}/test-runs`);
+}
+export async function submitTestRun(testRunId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session || (session.user as any).role !== "Tester") {
+    throw new Error("Unauthorized");
+  }
+
+  await dbConnect();
+
+  const run = await TestRun.findOne({ 
+    _id: testRunId, 
+    assignedTo: (session.user as any).id 
+  });
+
+  if (!run) {
+    throw new Error("Test run not found or not assigned to you.");
+  }
+
+  run.status = "Submitted";
+  await run.save();
+
+  redirect("/tester/tasks");
 }

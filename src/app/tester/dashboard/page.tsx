@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import TestRun from "@/domain/models/TestRun";
 import Link from "next/link";
-import { PlayCircle, Clock } from "lucide-react";
+import { PlayCircle, Clock, AlertCircle, FileCheck, CheckCircle } from "lucide-react";
 
 export default async function TesterDashboard() {
   const session = await getServerSession(authOptions);
@@ -20,62 +20,114 @@ export default async function TesterDashboard() {
     .sort({ deadline: 1, createdAt: 1 });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold text-slate-900 mb-8">My Testing Tasks</h1>
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Tester Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-1">Welcome back, {session?.user?.name}. Here's what's assigned to you.</p>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
+            <PlayCircle size={24} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-slate-900">{assignedRuns.length}</div>
+            <div className="text-sm font-medium text-slate-500">Pending Tasks</div>
+          </div>
+        </div>
+        
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600">
+            <Clock size={24} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-slate-900">{assignedRuns.filter(r => r.status === 'In Progress').length}</div>
+            <div className="text-sm font-medium text-slate-500">In Progress</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center text-green-600">
+            <CheckCircle size={24} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-slate-900">0</div>
+            <div className="text-sm font-medium text-slate-500">Completed</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div className="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center text-yellow-600">
+            <AlertCircle size={24} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-slate-900">0</div>
+            <div className="text-sm font-medium text-slate-500">Retesting Tasks</div>
+          </div>
+        </div>
+      </div>
+
+      <h2 className="text-lg font-semibold text-slate-900 mb-4">Assigned Test Runs</h2>
 
       {assignedRuns.length === 0 ? (
-        <div className="text-center py-20 bg-white border border-slate-200 rounded-xl shadow-sm">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 text-slate-400 mb-4">
-            <PlayCircle size={32} />
+        <div className="text-center py-16 bg-white border border-slate-200 rounded-xl shadow-sm">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-50 text-slate-400 mb-4">
+            <FileCheck size={32} />
           </div>
-          <h3 className="text-lg font-medium text-slate-900">You're all caught up!</h3>
-          <p className="mt-1 text-slate-500">No pending test runs assigned to you right now.</p>
+          <h3 className="text-base font-medium text-slate-900">You're all caught up!</h3>
+          <p className="mt-1 text-sm text-slate-500">No pending test runs assigned to you right now.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {assignedRuns.map((run) => (
-            <Link href={`/tester/test-runs/${run._id}`} key={run._id.toString()}>
-              <div className="glass-card p-6 rounded-2xl shadow-lg shadow-slate-200/40 hover:shadow-violet-500/20 transition-all duration-300 hover:scale-[1.02] cursor-pointer h-full flex flex-col relative overflow-hidden group border border-slate-100">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-bold text-slate-900 group-hover:text-violet-900 transition-colors">{run.name}</h3>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                    run.status === 'Pending' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-100 text-blue-800 border border-blue-200'
+            <div key={run._id.toString()} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col h-full overflow-hidden">
+              <div className="p-5 border-b border-slate-100 flex-1">
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="text-base font-bold text-slate-900 truncate pr-2">{run.name}</h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${
+                    run.status === 'Pending' ? 'bg-slate-100 text-slate-700' : 'bg-blue-100 text-blue-700'
                   }`}>
                     {run.status}
                   </span>
                 </div>
                 
-                <div className="space-y-4 flex-1 mb-6 mt-2">
-                  <div className="flex items-center text-sm text-slate-600">
-                    <div className="w-2 h-2 rounded-full bg-violet-400 mr-3"></div>
-                    <span className="font-semibold text-slate-800 mr-2">Project:</span>
-                    {run.projectId?.name || 'Unknown'}
+                <div className="space-y-3 mt-4">
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 block mb-1">Project</span>
+                    <div className="text-sm text-slate-900">{run.projectId?.name || 'Unknown'}</div>
                   </div>
-                  <div className="flex items-center text-sm text-slate-600">
-                    <div className="w-2 h-2 rounded-full bg-indigo-400 mr-3"></div>
-                    <span className="font-semibold text-slate-800 mr-2">Environment:</span>
-                    {run.environmentId?.name || 'Unknown'}
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 block mb-1">Environment</span>
+                    <div className="text-sm text-slate-900">{run.environmentId?.name || 'Unknown'}</div>
                   </div>
-                  <div className="flex items-center text-sm text-slate-600">
-                    <div className="w-2 h-2 rounded-full bg-blue-400 mr-3"></div>
-                    <span className="font-semibold text-slate-800 mr-2">Cases to Run:</span>
-                    <span className="bg-slate-100 px-2 py-0.5 rounded-md font-mono">{run.testCaseIds.length}</span>
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 block mb-1">Test Cases</span>
+                    <div className="text-sm text-slate-900">{run.testCaseIds.length} cases assigned</div>
                   </div>
-                  {run.deadline && (
-                    <div className="flex items-center text-sm text-rose-600 mt-4 bg-rose-50 p-2 rounded-lg border border-rose-100">
-                      <Clock size={16} className="mr-2" />
-                      <span className="font-bold mr-2">Deadline:</span>
-                      {new Date(run.deadline).toLocaleDateString()}
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-4 border-t border-slate-200/60 text-sm font-bold text-violet-600 flex items-center justify-end group-hover:text-indigo-600 transition-colors">
-                  Open Test Run <span className="ml-2 group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
               </div>
-            </Link>
+              
+              <div className="p-4 bg-slate-50 flex items-center justify-between">
+                {run.deadline ? (
+                  <div className="flex items-center text-xs font-medium text-slate-600">
+                    <Clock size={14} className="mr-1 text-slate-400" />
+                    Deadline: {new Date(run.deadline).toLocaleDateString()}
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-400">No deadline set</div>
+                )}
+                
+                <Link href={`/tester/test-runs/${run._id}`}>
+                  <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm">
+                    {run.status === 'Pending' ? 'Start Testing' : 'Continue'}
+                  </button>
+                </Link>
+              </div>
+            </div>
           ))}
         </div>
       )}

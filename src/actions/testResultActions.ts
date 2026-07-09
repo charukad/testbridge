@@ -9,7 +9,6 @@ import ActivityLog from "@/domain/models/ActivityLog";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import cloudinary from "@/lib/cloudinary";
 
 export async function submitTestResult(formData: FormData) {
@@ -26,6 +25,7 @@ export async function submitTestResult(formData: FormData) {
   const result = formData.get("result") as string;
   const actualResult = formData.get("actualResult") as string;
   const note = formData.get("note") as string;
+  const severity = formData.get("severity") as string || "High";
   const files = formData.getAll("screenshots") as File[];
   
   // Upload screenshots to Cloudinary
@@ -44,23 +44,40 @@ export async function submitTestResult(formData: FormData) {
     }
   }
 
-  // Save Test Result
-  const testResult = await TestResult.create({
-    testRunId,
-    projectId,
-    testCaseId,
-    testerId: (session.user as any).id,
-    result,
-    actualResult,
-    note,
-    screenshots: screenshotUrls,
-  });
+  // Check if result already exists to update it (re-testing or editing before submit)
+  let testResult = await TestResult.findOne({ testRunId, testCaseId });
+  
+  if (testResult) {
+    testResult.result = result as any;
+    testResult.actualResult = actualResult;
+    testResult.note = note;
+    testResult.screenshots = [...(testResult.screenshots || []), ...screenshotUrls];
+    if (result === "Fail") testResult.severity = severity;
+    await testResult.save();
+  } else {
+    // Save new Test Result
+    testResult = await TestResult.create({
+      testRunId,
+      projectId,
+      testCaseId,
+      testerId: (session.user as any).id,
+      result,
+      actualResult,
+      note,
+      severity: result === "Fail" ? severity : undefined,
+      screenshots: screenshotUrls,
+    });
+  }
 
   // Update TestRun status if it's pending
-  await TestRun.findByIdAndUpdate(testRunId, { status: "In Progress" });
+  const testRun = await TestRun.findById(testRunId);
+  if (testRun && testRun.status === "Pending") {
+    testRun.status = "In Progress";
+    await testRun.save();
+  }
 
   // Automatic Bug Workflow
-  if (result === "Fail") {
+  if (result === "Fail" && !testResult.issueId) {
     const testCase = await TestCase.findById(testCaseId);
     
     // Get highest issue number to increment
@@ -73,12 +90,12 @@ export async function submitTestResult(formData: FormData) {
       testCaseId,
       testResultId: testResult._id,
       issueNumber,
-      title: `Failed: ${testCase.title}`,
+      title: `${testCase.testCaseId} - ${testCase.title}`,
       description: note || "No description provided.",
       expectedResult: testCase.expectedResult,
       actualResult: actualResult || "Not provided.",
-      screenshots: screenshotUrls,
-      severity: "High", // Default, can be changed by dev
+      screenshots: testResult.screenshots,
+      severity,
       status: "Open",
       reportedBy: (session.user as any).id,
     });
@@ -97,5 +114,4 @@ export async function submitTestResult(formData: FormData) {
   }
 
   revalidatePath(`/tester/test-runs/${testRunId}`);
-  redirect(`/tester/test-runs/${testRunId}`);
 }

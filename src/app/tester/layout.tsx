@@ -3,9 +3,13 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { 
-  PlaySquare, 
+  LayoutDashboard, 
+  ListTodo, 
   RotateCcw,
-  LogOut
+  CheckCircle,
+  UserCircle,
+  LogOut,
+  Bell
 } from "lucide-react";
 
 export default async function TesterLayout({
@@ -20,44 +24,69 @@ export default async function TesterLayout({
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900">
-      <aside className="w-64 glass-sidebar text-slate-300 flex flex-col hidden md:flex shadow-xl shadow-violet-900/5">
-        <div className="p-6 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="System 42 Logo" className="h-8 w-auto" />
-            <h1 className="text-2xl font-bold text-white tracking-tight">System 42</h1>
+    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex h-full">
+        <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-lg">T</span>
           </div>
-          <p className="text-xs mt-1 text-slate-400">Tester Portal</p>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">TestBridge</h1>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/tester/dashboard" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-violet-900/50 hover:text-white transition-all duration-300 hover:translate-x-1">
-            <PlaySquare size={20} className="text-violet-400" />
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <Link href="/tester/dashboard" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
+            <LayoutDashboard size={18} />
+            <span>Dashboard</span>
+          </Link>
+          <Link href="/tester/tasks" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
+            <ListTodo size={18} />
             <span>My Tasks</span>
           </Link>
-          <Link href="/tester/retesting" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-violet-900/50 hover:text-white transition-all duration-300 hover:translate-x-1">
-            <RotateCcw size={20} className="text-violet-400" />
+          <Link href="/tester/retesting" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
+            <RotateCcw size={18} />
             <span>Retesting</span>
           </Link>
-        </nav>
-        <div className="p-4 border-t border-slate-800">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold">
-              {session.user?.name?.charAt(0) || "T"}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-sm text-white font-medium truncate">{session.user?.name}</p>
-              <p className="text-xs text-slate-400 truncate">{session.user?.email}</p>
-            </div>
-          </div>
-          <Link href="/api/auth/signout" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-colors w-full">
-            <LogOut size={20} />
-            <span>Sign Out</span>
+          <Link href="/tester/completed" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
+            <CheckCircle size={18} />
+            <span>Completed</span>
           </Link>
-        </div>
+          <Link href="/tester/profile" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
+            <UserCircle size={18} />
+            <span>Profile</span>
+          </Link>
+        </nav>
       </aside>
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Top Navbar */}
+        <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-end px-6 shrink-0">
+          <div className="flex items-center space-x-4">
+            <button className="text-slate-400 hover:text-slate-600 relative">
+              <Bell size={20} />
+              <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+            </button>
+            <div className="h-6 w-px bg-slate-200"></div>
+            <div className="flex items-center space-x-3">
+              <div className="flex flex-col items-end hidden sm:flex">
+                <span className="text-sm font-medium text-slate-900">{session.user?.name}</span>
+                <span className="text-xs text-slate-500">Tester</span>
+              </div>
+              <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+                {session.user?.name?.charAt(0) || "T"}
+              </div>
+            </div>
+            <Link href="/api/auth/signout" className="text-slate-400 hover:text-red-500 transition-colors ml-2">
+              <LogOut size={20} />
+            </Link>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto p-6 relative">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

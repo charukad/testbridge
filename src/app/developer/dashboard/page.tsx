@@ -5,6 +5,8 @@ import Project from "@/domain/models/Project";
 import Issue from "@/domain/models/Issue";
 import TestRun from "@/domain/models/TestRun";
 import { FolderGit2, Activity, Bug, CheckCircle } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default async function DeveloperDashboard() {
   const session = await getServerSession(authOptions);
@@ -15,61 +17,96 @@ export default async function DeveloperDashboard() {
   // Aggregate some simple metrics
   const projectCount = await Project.countDocuments({ createdBy: userId });
   const activeTestRuns = await TestRun.countDocuments({ assignedBy: userId, status: "In Progress" });
-  const openIssues = await Issue.countDocuments({ reportedBy: { $exists: true }, status: { $in: ["Open", "In Progress", "Reopened"] } }); // Basic filter for now
+  const openIssues = await Issue.countDocuments({ status: { $in: ["Open", "In Progress", "Reopened"] } }); // Developer sees all issues for their projects ideally
+  const completedRuns = await TestRun.countDocuments({ assignedBy: userId, status: "Completed" });
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-slate-900 mb-8">Developer Dashboard</h1>
+    <div className="max-w-7xl mx-auto space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Developer Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-1">Welcome back, {session?.user?.name}. Here's an overview of your testing operations.</p>
+        </div>
+        <Link href="/developer/projects/new">
+          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
+            Create Project
+          </Button>
+        </Link>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-lg shadow-slate-200/40 flex items-center space-x-4 transition-all duration-300 hover:scale-[1.03] hover:shadow-violet-500/20 relative overflow-hidden group cursor-pointer">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div className="p-3 bg-violet-50 text-violet-600 rounded-xl group-hover:bg-violet-100 transition-colors">
-            <FolderGit2 size={24} />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col transition-all hover:shadow-md">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Projects</h3>
+            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center">
+              <FolderGit2 size={20} />
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Projects</p>
-            <p className="text-3xl font-extrabold text-slate-900 mt-1">{projectCount}</p>
-          </div>
+          <div className="text-3xl font-extrabold text-slate-900">{projectCount}</div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-lg shadow-slate-200/40 flex items-center space-x-4 transition-all duration-300 hover:scale-[1.03] hover:shadow-blue-500/20 relative overflow-hidden group cursor-pointer">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-100 transition-colors">
-            <Activity size={24} />
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col transition-all hover:shadow-md">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Active Test Runs</h3>
+            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+              <Activity size={20} />
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Active Test Runs</p>
-            <p className="text-3xl font-extrabold text-slate-900 mt-1">{activeTestRuns}</p>
-          </div>
+          <div className="text-3xl font-extrabold text-slate-900">{activeTestRuns}</div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-lg shadow-slate-200/40 flex items-center space-x-4 transition-all duration-300 hover:scale-[1.03] hover:shadow-red-500/20 relative overflow-hidden group cursor-pointer">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div className="p-3 bg-red-50 text-red-600 rounded-xl group-hover:bg-red-100 transition-colors">
-            <Bug size={24} />
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col transition-all hover:shadow-md">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Open Issues</h3>
+            <div className="w-10 h-10 bg-red-50 text-red-600 rounded-lg flex items-center justify-center">
+              <Bug size={20} />
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Open Issues</p>
-            <p className="text-3xl font-extrabold text-slate-900 mt-1">{openIssues}</p>
-          </div>
+          <div className="text-3xl font-extrabold text-slate-900">{openIssues}</div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-lg shadow-slate-200/40 flex items-center space-x-4 transition-all duration-300 hover:scale-[1.03] hover:shadow-emerald-500/20 relative overflow-hidden group cursor-pointer">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-100 transition-colors">
-            <CheckCircle size={24} />
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col transition-all hover:shadow-md">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Completed Runs</h3>
+            <div className="w-10 h-10 bg-green-50 text-green-600 rounded-lg flex items-center justify-center">
+              <CheckCircle size={20} />
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Completed Runs</p>
-            <p className="text-3xl font-extrabold text-slate-900 mt-1">0</p>
-          </div>
+          <div className="text-3xl font-extrabold text-slate-900">{completedRuns}</div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Recent Activity</h2>
-        <div className="text-slate-500 text-sm py-8 text-center border-2 border-dashed border-slate-200 rounded-lg">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">Recent Test Runs</h2>
+            <Link href="/developer/test-runs" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">View All</Link>
+          </div>
+          <div className="p-6 flex-1 flex items-center justify-center">
+            <div className="text-slate-500 text-sm text-center">
+              No recent test runs found.
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">Recent Issues</h2>
+            <Link href="/developer/issues" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">View All</Link>
+          </div>
+          <div className="p-6 flex-1 flex items-center justify-center">
+            <div className="text-slate-500 text-sm text-center">
+              No issues reported yet.
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Activity Log</h2>
+        </div>
+        <div className="p-6 text-slate-500 text-sm text-center border-dashed border-2 border-slate-100 m-6 rounded-lg py-8">
           No recent activity found. Create a project to get started!
         </div>
       </div>
