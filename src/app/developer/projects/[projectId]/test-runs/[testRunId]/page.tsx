@@ -20,6 +20,14 @@ function ResultBadge({ result }: { result?: string }) {
   return <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${map[result] || "bg-slate-100 text-slate-600"}`}>{result}</span>;
 }
 
+function getTesterName(result: any) {
+  if (!result?.testerId) return "Not recorded";
+  if (typeof result.testerId === "object" && "name" in result.testerId) {
+    return result.testerId.name || "Unknown tester";
+  }
+  return "Unknown tester";
+}
+
 export default async function TestRunDetailDeveloperPage({ params }: { params: Promise<{ projectId: string; testRunId: string }> }) {
   await getServerSession(authOptions);
   const { projectId, testRunId } = await params;
@@ -45,6 +53,37 @@ export default async function TestRunDetailDeveloperPage({ params }: { params: P
   const totalCount = run.testCaseIds.length;
   const doneCount = results.length;
   const progress = totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
+  const testerSummary = results.reduce<Record<string, {
+    name: string;
+    total: number;
+    pass: number;
+    fail: number;
+    blocked: number;
+    notTested: number;
+  }>>((summary, result) => {
+    const testerName = getTesterName(result);
+    const key = result.testerId?._id?.toString?.() || testerName;
+
+    if (!summary[key]) {
+      summary[key] = {
+        name: testerName,
+        total: 0,
+        pass: 0,
+        fail: 0,
+        blocked: 0,
+        notTested: 0,
+      };
+    }
+
+    summary[key].total += 1;
+    if (result.result === "Pass") summary[key].pass += 1;
+    if (result.result === "Fail") summary[key].fail += 1;
+    if (result.result === "Blocked") summary[key].blocked += 1;
+    if (result.result === "Not Tested") summary[key].notTested += 1;
+
+    return summary;
+  }, {});
+  const testerSummaryRows = Object.values(testerSummary);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -89,6 +128,37 @@ export default async function TestRunDetailDeveloperPage({ params }: { params: P
         </div>
       </div>
 
+      {/* Tester Completion Summary */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-slate-100 bg-slate-50">
+          <h2 className="text-base font-semibold text-slate-900">Tester Completion</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Count of submitted test results by tester for this run.</p>
+        </div>
+        {testerSummaryRows.length === 0 ? (
+          <div className="p-6 text-sm text-slate-400 text-center">No tester submissions yet.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-5">
+            {testerSummaryRows.map((tester) => (
+              <div key={tester.name} className="border border-slate-200 rounded-lg p-4 bg-white">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">{tester.name}</p>
+                    <p className="text-xs text-slate-500">{tester.total} completed result{tester.total === 1 ? "" : "s"}</p>
+                  </div>
+                  <span className="text-xl font-extrabold text-indigo-600">{tester.total}</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 text-center text-[11px] font-semibold">
+                  <span className="rounded bg-green-50 text-green-700 py-1">P {tester.pass}</span>
+                  <span className="rounded bg-red-50 text-red-700 py-1">F {tester.fail}</span>
+                  <span className="rounded bg-orange-50 text-orange-700 py-1">B {tester.blocked}</span>
+                  <span className="rounded bg-slate-50 text-slate-600 py-1">NT {tester.notTested}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Test Case Results Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-100 bg-slate-50">
@@ -103,6 +173,7 @@ export default async function TestRunDetailDeveloperPage({ params }: { params: P
                 <th className="px-5 py-3 text-left font-bold">Title</th>
                 <th className="px-5 py-3 text-left font-bold">Module</th>
                 <th className="px-5 py-3 text-left font-bold">Result</th>
+                <th className="px-5 py-3 text-left font-bold">Executed By</th>
                 <th className="px-5 py-3 text-left font-bold">Actual Result / Note</th>
                 <th className="px-5 py-3 text-left font-bold">Screenshots</th>
               </tr>
@@ -121,6 +192,11 @@ export default async function TestRunDetailDeveloperPage({ params }: { params: P
                     </td>
                     <td className="px-5 py-4">
                       <ResultBadge result={result?.result} />
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                        {result ? getTesterName(result) : "—"}
+                      </span>
                     </td>
                     <td className="px-5 py-4 max-w-xs">
                       {result ? (

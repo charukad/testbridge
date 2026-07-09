@@ -4,27 +4,69 @@ import { useState } from "react";
 import { createTestRun } from "@/actions/testRunActions";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Lock, Save } from "lucide-react";
 
-export default function NewTestRunForm({ projectId, environments, testCases, testers }: any) {
+type TestRunFormEnvironment = {
+  _id: string;
+  name: string;
+};
+
+type TestRunFormTester = {
+  _id: string;
+  name: string;
+  email: string;
+};
+
+type TestRunFormCase = {
+  _id: string;
+  testCaseId: string;
+  title: string;
+  priority?: string;
+};
+
+type ActiveAssignment = {
+  runName: string;
+  status: string;
+  testerName: string;
+};
+
+type NewTestRunFormProps = {
+  projectId: string;
+  environments: TestRunFormEnvironment[];
+  testCases: TestRunFormCase[];
+  testers: TestRunFormTester[];
+  activeAssignmentsByCase: Record<string, ActiveAssignment>;
+};
+
+export default function NewTestRunForm({
+  projectId,
+  environments,
+  testCases,
+  testers,
+  activeAssignmentsByCase,
+}: NewTestRunFormProps) {
   const [selectedCases, setSelectedCases] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const availableCases = testCases.filter((tc) => !activeAssignmentsByCase[tc._id.toString()]);
+  const assignedCount = testCases.length - availableCases.length;
 
   const handleToggleCase = (id: string) => {
+    if (activeAssignmentsByCase[id]) return;
+
     setSelectedCases(prev => 
       prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
     );
   };
 
   const handleSelectAll = () => {
-    if (selectedCases.length === testCases.length) {
+    if (selectedCases.length === availableCases.length) {
       setSelectedCases([]);
     } else {
-      setSelectedCases(testCases.map((tc: any) => tc._id.toString()));
+      setSelectedCases(availableCases.map((tc) => tc._id.toString()));
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async () => {
     setLoading(true);
     // The actual submission is handled by the server action `createTestRun` on the form action
     // But setting loading to true here gives immediate feedback
@@ -98,8 +140,13 @@ export default function NewTestRunForm({ projectId, environments, testCases, tes
               <h3 className="text-lg font-bold text-slate-900">Select Test Cases</h3>
               <div className="text-sm flex items-center">
                 <span className="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-md mr-4">{selectedCases.length} Selected</span>
+                {assignedCount > 0 && (
+                  <span className="font-semibold text-amber-700 bg-amber-50 px-3 py-1 rounded-md mr-4">
+                    {assignedCount} Already Assigned
+                  </span>
+                )}
                 <Button type="button" variant="outline" size="sm" onClick={handleSelectAll} className="bg-white border-slate-300 text-slate-700 hover:bg-slate-50">
-                  {selectedCases.length === testCases.length ? "Deselect All" : "Select All"}
+                  {selectedCases.length === availableCases.length ? "Deselect All" : "Select Available"}
                 </Button>
               </div>
             </div>
@@ -112,40 +159,62 @@ export default function NewTestRunForm({ projectId, environments, testCases, tes
                     <th className="px-4 py-3 font-bold">ID</th>
                     <th className="px-4 py-3 font-bold">Title</th>
                     <th className="px-4 py-3 font-bold">Priority</th>
+                    <th className="px-4 py-3 font-bold">Assignment</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {testCases.map((tc: any) => (
-                    <tr 
-                      key={tc._id} 
-                      className={`hover:bg-slate-50 cursor-pointer transition-colors ${selectedCases.includes(tc._id.toString()) ? 'bg-indigo-50/50' : ''}`}
-                      onClick={() => handleToggleCase(tc._id.toString())}
-                    >
-                      <td className="px-4 py-3 text-center">
-                        <input 
-                          type="checkbox" 
-                          checked={selectedCases.includes(tc._id.toString())}
-                          onChange={() => {}} // handled by row click
-                          className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                        />
-                      </td>
-                      <td className="px-4 py-3 font-bold text-slate-900">{tc.testCaseId}</td>
-                      <td className="px-4 py-3 truncate max-w-md font-medium text-slate-800">{tc.title}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                          tc.priority === 'Critical' ? 'bg-red-100 text-red-700' :
-                          tc.priority === 'High' ? 'bg-orange-100 text-orange-700' :
-                          tc.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-slate-100 text-slate-700'
-                        }`}>
-                          {tc.priority || 'Normal'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {testCases.map((tc) => {
+                    const id = tc._id.toString();
+                    const activeAssignment = activeAssignmentsByCase[id];
+                    const isAssigned = Boolean(activeAssignment);
+
+                    return (
+                      <tr 
+                        key={tc._id} 
+                        className={`transition-colors ${
+                          isAssigned
+                            ? "bg-slate-50 text-slate-400 cursor-not-allowed"
+                            : `hover:bg-slate-50 cursor-pointer ${selectedCases.includes(id) ? "bg-indigo-50/50" : ""}`
+                        }`}
+                        onClick={() => handleToggleCase(id)}
+                      >
+                        <td className="px-4 py-3 text-center">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedCases.includes(id)}
+                            disabled={isAssigned}
+                            onChange={() => {}} // handled by row click
+                            className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 disabled:opacity-40"
+                          />
+                        </td>
+                        <td className={`px-4 py-3 font-bold ${isAssigned ? "text-slate-400" : "text-slate-900"}`}>{tc.testCaseId}</td>
+                        <td className={`px-4 py-3 truncate max-w-md font-medium ${isAssigned ? "text-slate-400" : "text-slate-800"}`}>{tc.title}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            tc.priority === 'Critical' ? 'bg-red-100 text-red-700' :
+                            tc.priority === 'High' ? 'bg-orange-100 text-orange-700' :
+                            tc.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-slate-100 text-slate-700'
+                          }`}>
+                            {tc.priority || 'Normal'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {activeAssignment ? (
+                            <div className="inline-flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1 rounded">
+                              <Lock size={12} />
+                              <span>{activeAssignment.testerName} · {activeAssignment.runName}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-100 px-2 py-1 rounded">Available</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {testCases.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-4 py-12 text-center text-slate-500">
+                      <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
                         No test cases available in this project.
                       </td>
                     </tr>

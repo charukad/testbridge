@@ -8,6 +8,8 @@ import { requireRole } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+const ACTIVE_TEST_RUN_STATUSES = ["Pending", "In Progress", "Submitted"];
+
 export async function createTestRun(formData: FormData) {
   const session = await requireRole("Developer");
 
@@ -22,7 +24,38 @@ export async function createTestRun(formData: FormData) {
   const projectId = formData.get("projectId") as string;
   const testCaseIdsStr = formData.get("testCaseIds") as string;
 
-  const testCaseIds = JSON.parse(testCaseIdsStr);
+  const testCaseIds = JSON.parse(testCaseIdsStr) as string[];
+
+  if (!Array.isArray(testCaseIds) || testCaseIds.length === 0) {
+    throw new Error("Select at least one test case.");
+  }
+
+  const activeRunsWithSelectedCases = await TestRun.find({
+    projectId,
+    status: { $in: ACTIVE_TEST_RUN_STATUSES },
+    testCaseIds: { $in: testCaseIds },
+  }).populate("assignedTo", "name email");
+
+  const assignedCaseIds = new Set<string>();
+  const assignedTesterNames = new Set<string>();
+
+  activeRunsWithSelectedCases.forEach((run) => {
+    run.testCaseIds.forEach((testCaseId: unknown) => {
+      const id = testCaseId?.toString();
+      if (id && testCaseIds.includes(id)) {
+        assignedCaseIds.add(id);
+      }
+    });
+
+    const tester = run.assignedTo as { name?: string; email?: string } | undefined;
+    assignedTesterNames.add(tester?.name || tester?.email || "another tester");
+  });
+
+  if (assignedCaseIds.size > 0) {
+    throw new Error(
+      `${assignedCaseIds.size} selected test case${assignedCaseIds.size === 1 ? " is" : "s are"} already assigned in an active test run for ${Array.from(assignedTesterNames).join(", ")}.`
+    );
+  }
 
   const testRun = await TestRun.create({
     name,

@@ -2,21 +2,82 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import TestRun from "@/domain/models/TestRun";
+import TestResult from "@/domain/models/TestResult";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, PlusCircle, PlayCircle, Clock, User, Server } from "lucide-react";
+import { ArrowLeft, PlusCircle, PlayCircle, Clock, User, Server, BarChart3 } from "lucide-react";
 
 export default async function TestRunsPage({ params }: { params: Promise<{ projectId: string }> }) {
   await getServerSession(authOptions);
   const { projectId } = await params;
   await dbConnect();
   
-  // Populate assignedTo to get the tester's name
-  const testRuns = await TestRun.find({ projectId })
-    .populate('assignedTo', 'name email')
-    .populate('environmentId', 'name')
-    .sort({ createdAt: -1 })
-    .lean();
+  const [testRuns, testResults] = await Promise.all([
+    TestRun.find({ projectId })
+      .populate('assignedTo', 'name email')
+      .populate('environmentId', 'name')
+      .sort({ createdAt: -1 })
+      .lean(),
+    TestResult.find({ projectId })
+      .populate("testerId", "name email")
+      .lean(),
+  ]);
+
+  const testerStats = testRuns.reduce<Record<string, {
+    name: string;
+    email?: string;
+    assigned: number;
+    completed: number;
+    pass: number;
+    fail: number;
+    blocked: number;
+    notTested: number;
+  }>>((stats, run) => {
+    const tester = run.assignedTo as { _id?: string; name?: string; email?: string } | undefined;
+    const key = tester?._id?.toString?.() || tester?.email || "unknown";
+
+    if (!stats[key]) {
+      stats[key] = {
+        name: tester?.name || "Unknown tester",
+        email: tester?.email,
+        assigned: 0,
+        completed: 0,
+        pass: 0,
+        fail: 0,
+        blocked: 0,
+        notTested: 0,
+      };
+    }
+
+    stats[key].assigned += run.testCaseIds?.length || 0;
+    return stats;
+  }, {});
+
+  testResults.forEach((result) => {
+    const tester = result.testerId as { _id?: string; name?: string; email?: string } | undefined;
+    const key = tester?._id?.toString?.() || tester?.email || "unknown";
+
+    if (!testerStats[key]) {
+      testerStats[key] = {
+        name: tester?.name || "Unknown tester",
+        email: tester?.email,
+        assigned: 0,
+        completed: 0,
+        pass: 0,
+        fail: 0,
+        blocked: 0,
+        notTested: 0,
+      };
+    }
+
+    testerStats[key].completed += 1;
+    if (result.result === "Pass") testerStats[key].pass += 1;
+    if (result.result === "Fail") testerStats[key].fail += 1;
+    if (result.result === "Blocked") testerStats[key].blocked += 1;
+    if (result.result === "Not Tested") testerStats[key].notTested += 1;
+  });
+
+  const testerStatRows = Object.values(testerStats);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -35,6 +96,52 @@ export default async function TestRunsPage({ params }: { params: Promise<{ proje
             Create Test Run
           </Button>
         </Link>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+          <BarChart3 size={16} className="text-indigo-500" />
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Tester Workload & Completion</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Assigned case count and completed result count by tester for this project.</p>
+          </div>
+        </div>
+        {testerStatRows.length === 0 ? (
+          <div className="p-6 text-center text-sm text-slate-400">No tester assignments yet.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-5">
+            {testerStatRows.map((tester) => (
+              <div key={`${tester.name}-${tester.email || ""}`} className="border border-slate-200 rounded-lg p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate">{tester.name}</p>
+                    <p className="text-xs text-slate-500 truncate">{tester.email || "No email"}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xl font-extrabold text-indigo-600">{tester.completed}</p>
+                    <p className="text-[10px] uppercase font-bold text-slate-400">Done</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded bg-slate-50 border border-slate-100 p-2">
+                    <span className="block text-slate-500 font-semibold">Assigned</span>
+                    <span className="text-lg font-bold text-slate-900">{tester.assigned}</span>
+                  </div>
+                  <div className="rounded bg-indigo-50 border border-indigo-100 p-2">
+                    <span className="block text-indigo-600 font-semibold">Completed</span>
+                    <span className="text-lg font-bold text-indigo-700">{tester.completed}</span>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-4 gap-1 text-center text-[11px] font-semibold">
+                  <span className="rounded bg-green-50 text-green-700 py-1">P {tester.pass}</span>
+                  <span className="rounded bg-red-50 text-red-700 py-1">F {tester.fail}</span>
+                  <span className="rounded bg-orange-50 text-orange-700 py-1">B {tester.blocked}</span>
+                  <span className="rounded bg-slate-50 text-slate-600 py-1">NT {tester.notTested}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {testRuns.length === 0 ? (
