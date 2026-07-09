@@ -31,8 +31,8 @@ export default async function TestRunDetailPage({ params }: { params: { testRunI
   );
 
   const env = await Environment.findById(run.environmentId);
-  const testCases = await TestCase.find({ _id: { $in: run.testCaseIds } });
-  const results = await TestResult.find({ testRunId: run._id });
+  const testCases = await TestCase.find({ _id: { $in: run.testCaseIds } }).lean();
+  const results = await TestResult.find({ testRunId: run._id }).lean();
 
   const getResultStatus = (tcId: string) => {
     const result = results.find(r => r.testCaseId.toString() === tcId.toString());

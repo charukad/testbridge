@@ -12,7 +12,8 @@ export default async function BugBoardPage() {
   // For simplicity, fetch all issues accessible. A real app would filter by project access.
   const issues = await Issue.find()
     .populate('projectId', 'name')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
   const columns = [
     { title: "Open / Reopened", statuses: ["Open", "Reopened"], icon: <AlertCircle className="text-red-500" size={18} /> },

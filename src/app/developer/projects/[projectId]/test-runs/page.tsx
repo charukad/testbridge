@@ -14,7 +14,8 @@ export default async function TestRunsPage({ params }: { params: { projectId: st
   const testRuns = await TestRun.find({ projectId: params.projectId })
     .populate('assignedTo', 'name email')
     .populate('environmentId', 'name')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

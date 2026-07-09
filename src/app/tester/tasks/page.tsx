@@ -16,7 +16,8 @@ export default async function TesterTasks() {
   })
     .populate('projectId', 'name')
     .populate('environmentId', 'name')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

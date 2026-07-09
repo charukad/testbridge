@@ -15,7 +15,8 @@ export default async function RetestingDashboard() {
     .populate('projectId', 'name')
     .populate('issueId', 'issueNumber title fixNote severity')
     .populate('testCaseId', 'testCaseId title')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
   const pendingTasks = tasks.filter(t => t.status === "Pending" || t.status === "In Progress");
   const completedTasks = tasks.filter(t => t.status === "Passed" || t.status === "Failed Again");
