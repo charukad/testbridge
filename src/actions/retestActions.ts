@@ -4,17 +4,13 @@ import dbConnect from "@/lib/mongoose";
 import RetestTask from "@/domain/models/RetestTask";
 import Issue from "@/domain/models/Issue";
 import ActivityLog from "@/domain/models/ActivityLog";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import cloudinary from "@/lib/cloudinary";
 
 export async function submitRetest(formData: FormData) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "Tester") {
-    throw new Error("Unauthorized");
-  }
+  const session = await requireRole("Tester");
 
   await dbConnect();
 
@@ -25,6 +21,9 @@ export async function submitRetest(formData: FormData) {
   
   const retestTask = await RetestTask.findById(retestTaskId);
   if (!retestTask) throw new Error("Retest task not found");
+  if (retestTask.assignedTo.toString() !== session.user.id) {
+    throw new Error("Unauthorized");
+  }
 
   const issue = await Issue.findById(retestTask.issueId);
   if (!issue) throw new Error("Issue not found");
@@ -57,7 +56,7 @@ export async function submitRetest(formData: FormData) {
     
     await ActivityLog.create({
       projectId: issue.projectId,
-      userId: (session.user as any).id,
+      userId: session.user.id,
       action: "Closed",
       entityType: "Issue",
       entityId: issue._id,
@@ -70,7 +69,7 @@ export async function submitRetest(formData: FormData) {
 
     await ActivityLog.create({
       projectId: issue.projectId,
-      userId: (session.user as any).id,
+      userId: session.user.id,
       action: "Reopened",
       entityType: "Issue",
       entityId: issue._id,

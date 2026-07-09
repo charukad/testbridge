@@ -5,10 +5,8 @@ import TestRun from "@/domain/models/TestRun";
 import TestCase from "@/domain/models/TestCase";
 import TestResult from "@/domain/models/TestResult";
 import Environment from "@/domain/models/Environment";
-import Issue from "@/domain/models/Issue";
-import User from "@/domain/models/User";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, XCircle, AlertTriangle, MinusCircle, Image as ImageIcon, MessageSquare } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { redirect } from "next/navigation";
 
 function ResultBadge({ result }: { result?: string }) {
@@ -22,15 +20,16 @@ function ResultBadge({ result }: { result?: string }) {
   return <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${map[result] || "bg-slate-100 text-slate-600"}`}>{result}</span>;
 }
 
-export default async function TestRunDetailDeveloperPage({ params }: { params: { projectId: string; testRunId: string } }) {
-  const session = await getServerSession(authOptions);
+export default async function TestRunDetailDeveloperPage({ params }: { params: Promise<{ projectId: string; testRunId: string }> }) {
+  await getServerSession(authOptions);
+  const { projectId, testRunId } = await params;
   await dbConnect();
 
-  const run = await TestRun.findOne({ _id: params.testRunId, projectId: params.projectId })
+  const run = await TestRun.findOne({ _id: testRunId, projectId })
     .populate("assignedTo", "name email")
     .populate("assignedBy", "name");
 
-  if (!run) redirect(`/developer/projects/${params.projectId}/test-runs`);
+  if (!run) redirect(`/developer/projects/${projectId}/test-runs`);
 
   const [env, testCases, results] = await Promise.all([
     Environment.findById(run.environmentId),
@@ -38,11 +37,11 @@ export default async function TestRunDetailDeveloperPage({ params }: { params: {
     TestResult.find({ testRunId: run._id }).populate("testerId", "name"),
   ]);
 
-  const getResult = (tcId: string) => results.find((r: any) => r.testCaseId.toString() === tcId);
+  const getResult = (tcId: string) => results.find((result) => result.testCaseId.toString() === tcId);
 
-  const passCount = results.filter((r: any) => r.result === "Pass").length;
-  const failCount = results.filter((r: any) => r.result === "Fail").length;
-  const blockedCount = results.filter((r: any) => r.result === "Blocked").length;
+  const passCount = results.filter((result) => result.result === "Pass").length;
+  const failCount = results.filter((result) => result.result === "Fail").length;
+  const blockedCount = results.filter((result) => result.result === "Blocked").length;
   const totalCount = run.testCaseIds.length;
   const doneCount = results.length;
   const progress = totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
@@ -50,7 +49,7 @@ export default async function TestRunDetailDeveloperPage({ params }: { params: {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div>
-        <Link href={`/developer/projects/${params.projectId}/test-runs`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-4">
+        <Link href={`/developer/projects/${projectId}/test-runs`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-4">
           <ArrowLeft size={16} className="mr-1.5" /> Back to Test Runs
         </Link>
         <div className="flex items-start justify-between">

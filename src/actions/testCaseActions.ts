@@ -2,16 +2,14 @@
 
 import dbConnect from "@/lib/mongoose";
 import TestCase from "@/domain/models/TestCase";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+type ImportedTestCase = Record<string, string | undefined>;
+
 export async function createTestCase(formData: FormData) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "Developer") {
-    throw new Error("Unauthorized");
-  }
+  const session = await requireRole("Developer");
 
   await dbConnect();
 
@@ -28,18 +26,15 @@ export async function createTestCase(formData: FormData) {
     expectedResult: formData.get("expectedResult"),
     priority: formData.get("priority"),
     type: formData.get("type"),
-    createdBy: (session.user as any).id,
+    createdBy: session.user.id,
   });
 
   revalidatePath(`/developer/projects/${projectId}/test-cases`);
   redirect(`/developer/projects/${projectId}/test-cases`);
 }
 
-export async function importTestCases(projectId: string, testCases: any[]) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "Developer") {
-    throw new Error("Unauthorized");
-  }
+export async function importTestCases(projectId: string, testCases: ImportedTestCase[]) {
+  const session = await requireRole("Developer");
 
   await dbConnect();
 
@@ -54,7 +49,7 @@ export async function importTestCases(projectId: string, testCases: any[]) {
     expectedResult: tc["Expected Result"] || tc.expectedResult,
     priority: tc["Priority"] || tc.priority,
     type: tc["Type"] || tc.type,
-    createdBy: (session.user as any).id,
+    createdBy: session.user.id,
   }));
 
   await TestCase.insertMany(formattedDocs);

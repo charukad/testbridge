@@ -63,9 +63,9 @@ export default async function RetestingDashboard() {
                   </h3>
                   
                   <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 mb-4 flex-1">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Developer's Fix Note:</span> 
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Developer&apos;s Fix Note:</span> 
                     <p className="text-sm text-slate-700 line-clamp-3 italic">
-                      "{task.issueId?.fixNote || 'No fix note provided.'}"
+                      &quot;{task.issueId?.fixNote || 'No fix note provided.'}&quot;
                     </p>
                   </div>
 

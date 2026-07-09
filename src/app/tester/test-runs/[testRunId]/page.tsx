@@ -8,14 +8,15 @@ import Environment from "@/domain/models/Environment";
 import Link from "next/link";
 import { ArrowLeft, Play, CheckCircle2, XCircle, AlertTriangle, MinusCircle, Globe, Smartphone, Lock, Send } from "lucide-react";
 
-export default async function TestRunDetailPage({ params }: { params: { testRunId: string } }) {
+export default async function TestRunDetailPage({ params }: { params: Promise<{ testRunId: string }> }) {
   const session = await getServerSession(authOptions);
+  const { testRunId } = await params;
   await dbConnect();
   
   const userId = (session?.user as any)?.id;
   
   const run = await TestRun.findOne({ 
-    _id: params.testRunId,
+    _id: testRunId,
     assignedTo: userId
   }).populate('projectId', 'name');
 

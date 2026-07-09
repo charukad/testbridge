@@ -10,11 +10,12 @@ import Link from "next/link";
 import { Server, FileText, PlayCircle, ArrowLeft, Bug, PlusCircle } from "lucide-react";
 import { redirect } from "next/navigation";
 
-export default async function ProjectDetailPage({ params }: { params: { projectId: string } }) {
-  const session = await getServerSession(authOptions);
+export default async function ProjectDetailPage({ params }: { params: Promise<{ projectId: string }> }) {
+  await getServerSession(authOptions);
+  const { projectId } = await params;
   await dbConnect();
 
-  const project = await Project.findById(params.projectId);
+  const project = await Project.findById(projectId);
   if (!project) redirect("/developer/projects");
 
   const [envCount, testCaseCount, testRunCount, openIssueCount, recentRuns] = await Promise.all([

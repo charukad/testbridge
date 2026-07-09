@@ -6,17 +6,18 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, PlusCircle, Upload, FileText, Search, Filter } from "lucide-react";
 
-export default async function TestCasesPage({ params }: { params: { projectId: string } }) {
-  const session = await getServerSession(authOptions);
+export default async function TestCasesPage({ params }: { params: Promise<{ projectId: string }> }) {
+  await getServerSession(authOptions);
+  const { projectId } = await params;
   await dbConnect();
   
-  const testCases = await TestCase.find({ projectId: params.projectId }).sort({ createdAt: -1 });
+  const testCases = await TestCase.find({ projectId }).sort({ createdAt: -1 });
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-end mb-8">
         <div>
-          <Link href={`/developer/projects/${params.projectId}`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-3">
+          <Link href={`/developer/projects/${projectId}`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-3">
             <ArrowLeft size={16} className="mr-1.5" />
             Back to Project
           </Link>
@@ -24,13 +25,13 @@ export default async function TestCasesPage({ params }: { params: { projectId: s
           <p className="text-sm text-slate-500 mt-1">Manage test scenarios, steps, and expected outcomes.</p>
         </div>
         <div className="flex gap-3">
-          <Link href={`/developer/projects/${params.projectId}/test-cases/import`}>
+          <Link href={`/developer/projects/${projectId}/test-cases/import`}>
             <Button variant="outline" className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 gap-2 bg-white shadow-sm">
               <Upload size={16} />
               Import CSV
             </Button>
           </Link>
-          <Link href={`/developer/projects/${params.projectId}/test-cases/new`}>
+          <Link href={`/developer/projects/${projectId}/test-cases/new`}>
             <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm">
               <PlusCircle size={16} />
               New Test Case

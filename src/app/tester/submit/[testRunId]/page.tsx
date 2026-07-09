@@ -8,14 +8,15 @@ import { submitTestRun } from "@/actions/testRunActions";
 import { ArrowLeft, Send, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default async function SubmitTestRunPage({ params }: { params: { testRunId: string } }) {
+export default async function SubmitTestRunPage({ params }: { params: Promise<{ testRunId: string }> }) {
   const session = await getServerSession(authOptions);
+  const { testRunId } = await params;
   await dbConnect();
   
   const userId = (session?.user as any)?.id;
   
   const run = await TestRun.findOne({ 
-    _id: params.testRunId,
+    _id: testRunId,
     assignedTo: userId
   }).populate('projectId', 'name');
 
@@ -42,7 +43,7 @@ export default async function SubmitTestRunPage({ params }: { params: { testRunI
   return (
     <div className="max-w-3xl mx-auto py-8">
       <div className="mb-6">
-        <Link href={`/tester/test-runs/${params.testRunId}`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors">
+        <Link href={`/tester/test-runs/${testRunId}`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors">
           <ArrowLeft size={16} className="mr-1.5" />
           Back to Test Run
         </Link>
@@ -82,7 +83,7 @@ export default async function SubmitTestRunPage({ params }: { params: { testRunI
               <AlertTriangle className="text-yellow-600 shrink-0 mt-0.5" size={20} />
               <div>
                 <strong className="block text-yellow-900 mb-1">Warning: Incomplete Test Run</strong>
-                <p>You still have <span className="font-bold">{notTestedCount}</span> test cases that are either pending or marked as 'Not Tested'. Do you want to submit anyway?</p>
+                <p>You still have <span className="font-bold">{notTestedCount}</span> test cases that are either pending or marked as &apos;Not Tested&apos;. Do you want to submit anyway?</p>
               </div>
             </div>
           )}

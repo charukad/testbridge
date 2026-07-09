@@ -5,6 +5,16 @@ import TestRun from "@/domain/models/TestRun";
 import Link from "next/link";
 import { Clock } from "lucide-react";
 
+type TaskRun = {
+  _id: string;
+  name: string;
+  status: string;
+  deadline?: string;
+  testCaseIds?: string[];
+  projectId?: { name?: string };
+  environmentId?: { name?: string };
+};
+
 export default async function TesterTasks() {
   const session = await getServerSession(authOptions);
   await dbConnect();
@@ -19,7 +29,7 @@ export default async function TesterTasks() {
     .sort({ createdAt: -1 })
     .lean();
 
-  const allRuns = JSON.parse(JSON.stringify(allRunsRaw));
+  const allRuns = JSON.parse(JSON.stringify(allRunsRaw)) as TaskRun[];
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

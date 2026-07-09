@@ -2,16 +2,12 @@
 
 import dbConnect from "@/lib/mongoose";
 import Environment from "@/domain/models/Environment";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export async function createEnvironment(formData: FormData) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "Developer") {
-    throw new Error("Unauthorized");
-  }
+  const session = await requireRole("Developer");
 
   await dbConnect();
 
@@ -43,7 +39,7 @@ export async function createEnvironment(formData: FormData) {
     buildVersion,
     releaseVersion,
     instructions,
-    createdBy: (session.user as any).id,
+    createdBy: session.user.id,
   });
 
   revalidatePath(`/developer/projects/${projectId}/environments`);

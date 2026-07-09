@@ -2,16 +2,12 @@
 
 import dbConnect from "@/lib/mongoose";
 import Project from "@/domain/models/Project";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export async function createProject(formData: FormData) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "Developer") {
-    throw new Error("Unauthorized");
-  }
+  const session = await requireRole("Developer");
 
   await dbConnect();
 
@@ -29,7 +25,7 @@ export async function createProject(formData: FormData) {
     description,
     clientName,
     projectType,
-    createdBy: (session.user as any).id,
+    createdBy: session.user.id,
   });
 
   revalidatePath("/developer/projects");

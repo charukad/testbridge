@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { importTestCases } from "@/actions/testCaseActions";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,12 @@ import Link from "next/link";
 import { ArrowLeft, UploadCloud, AlertCircle, CheckCircle2 } from "lucide-react";
 import Papa from "papaparse";
 
-export default function ImportTestCasesPage({ params }: { params: { projectId: string } }) {
+type ImportedTestCaseRow = Record<string, string | undefined>;
+
+export default function ImportTestCasesPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
   const [file, setFile] = useState<File | null>(null);
-  const [parsedData, setParsedData] = useState<any[]>([]);
+  const [parsedData, setParsedData] = useState<ImportedTestCaseRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -27,7 +30,7 @@ export default function ImportTestCasesPage({ params }: { params: { projectId: s
           if (results.errors.length > 0) {
             setError("Error parsing CSV. Please check the format.");
           } else {
-            setParsedData(results.data);
+            setParsedData(results.data as ImportedTestCaseRow[]);
             setError("");
           }
         }
@@ -42,13 +45,13 @@ export default function ImportTestCasesPage({ params }: { params: { projectId: s
     }
     setLoading(true);
     try {
-      await importTestCases(params.projectId, parsedData);
+      await importTestCases(projectId, parsedData);
       setSuccess(true);
       setTimeout(() => {
-        router.push(`/developer/projects/${params.projectId}/test-cases`);
+        router.push(`/developer/projects/${projectId}/test-cases`);
       }, 2000);
-    } catch (err: any) {
-      setError(err.message || "Failed to import test cases.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to import test cases.");
     } finally {
       setLoading(false);
     }
@@ -57,7 +60,7 @@ export default function ImportTestCasesPage({ params }: { params: { projectId: s
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href={`/developer/projects/${params.projectId}/test-cases`} className="inline-flex items-center text-sm text-slate-500 hover:text-violet-600 transition-colors">
+        <Link href={`/developer/projects/${projectId}/test-cases`} className="inline-flex items-center text-sm text-slate-500 hover:text-violet-600 transition-colors">
           <ArrowLeft size={16} className="mr-1" />
           Back to Test Cases
         </Link>
@@ -119,7 +122,7 @@ export default function ImportTestCasesPage({ params }: { params: { projectId: s
                       <tbody className="divide-y divide-slate-100">
                         {parsedData.slice(0, 3).map((row, idx) => (
                           <tr key={idx}>
-                            {Object.values(row).slice(0, 5).map((val: any, vIdx) => (
+                            {Object.values(row).slice(0, 5).map((val, vIdx) => (
                               <td key={vIdx} className="px-4 py-3 truncate max-w-xs">{val}</td>
                             ))}
                           </tr>
@@ -132,7 +135,7 @@ export default function ImportTestCasesPage({ params }: { params: { projectId: s
               )}
 
               <div className="mt-8 flex justify-end gap-3">
-                <Link href={`/developer/projects/${params.projectId}/test-cases`}>
+                <Link href={`/developer/projects/${projectId}/test-cases`}>
                   <Button type="button" variant="outline" className="border-slate-300 text-slate-700">Cancel</Button>
                 </Link>
                 <Button 

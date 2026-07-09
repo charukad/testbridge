@@ -6,16 +6,17 @@ import Link from "next/link";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import ExecutionForm from "./ExecutionForm";
 
-export default async function TestExecutionPage({ params }: { params: { testRunId: string, testCaseId: string } }) {
-  const session = await getServerSession(authOptions);
+export default async function TestExecutionPage({ params }: { params: Promise<{ testRunId: string, testCaseId: string }> }) {
+  await getServerSession(authOptions);
+  const { testRunId, testCaseId } = await params;
   await dbConnect();
   
-  const testCase = await TestCase.findById(params.testCaseId);
+  const testCase = await TestCase.findById(testCaseId);
   if (!testCase) return (
     <div className="flex flex-col items-center justify-center py-20">
       <AlertTriangle className="text-red-500 w-12 h-12 mb-4" />
       <h2 className="text-xl font-bold text-slate-900">Test case not found</h2>
-      <Link href={`/tester/test-runs/${params.testRunId}`} className="mt-6 text-indigo-600 font-medium hover:underline">
+      <Link href={`/tester/test-runs/${testRunId}`} className="mt-6 text-indigo-600 font-medium hover:underline">
         Back to Test Run
       </Link>
     </div>
@@ -24,7 +25,7 @@ export default async function TestExecutionPage({ params }: { params: { testRunI
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-6">
-        <Link href={`/tester/test-runs/${params.testRunId}`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors">
+        <Link href={`/tester/test-runs/${testRunId}`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors">
           <ArrowLeft size={16} className="mr-1.5" />
           Back to Test Run
         </Link>
@@ -89,9 +90,9 @@ export default async function TestExecutionPage({ params }: { params: { testRunI
 
         <div className="lg:col-span-2">
           <ExecutionForm 
-            testRunId={params.testRunId} 
+            testRunId={testRunId} 
             projectId={testCase.projectId.toString()}
-            testCaseId={params.testCaseId} 
+            testCaseId={testCaseId} 
           />
         </div>
       </div>

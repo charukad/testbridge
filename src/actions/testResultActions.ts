@@ -6,23 +6,21 @@ import TestCase from "@/domain/models/TestCase";
 import Issue from "@/domain/models/Issue";
 import TestRun from "@/domain/models/TestRun";
 import ActivityLog from "@/domain/models/ActivityLog";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import cloudinary from "@/lib/cloudinary";
 
+type TestResultStatus = "Pass" | "Fail" | "Blocked" | "Not Tested";
+
 export async function submitTestResult(formData: FormData) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "Tester") {
-    throw new Error("Unauthorized");
-  }
+  const session = await requireRole("Tester");
 
   await dbConnect();
 
   const testRunId = formData.get("testRunId") as string;
   const projectId = formData.get("projectId") as string;
   const testCaseId = formData.get("testCaseId") as string;
-  const result = formData.get("result") as string;
+  const result = formData.get("result") as TestResultStatus;
   const actualResult = formData.get("actualResult") as string;
   const note = formData.get("note") as string;
   const severity = formData.get("severity") as string || "High";
@@ -48,7 +46,7 @@ export async function submitTestResult(formData: FormData) {
   let testResult = await TestResult.findOne({ testRunId, testCaseId });
   
   if (testResult) {
-    testResult.result = result as any;
+    testResult.result = result;
     testResult.actualResult = actualResult;
     testResult.note = note;
     testResult.screenshots = [...(testResult.screenshots || []), ...screenshotUrls];
@@ -60,7 +58,7 @@ export async function submitTestResult(formData: FormData) {
       testRunId,
       projectId,
       testCaseId,
-      testerId: (session.user as any).id,
+      testerId: session.user.id,
       result,
       actualResult,
       note,
@@ -79,6 +77,17 @@ export async function submitTestResult(formData: FormData) {
   // Automatic Bug Workflow
   if (result === "Fail" && !testResult.issueId) {
     const testCase = await TestCase.findById(testCaseId);
+    if (!testCase) {
+      throw new Error("Test case not found");
+    }
+
+    const existingIssue = await Issue.findOne({ testRunId, testCaseId });
+    if (existingIssue) {
+      testResult.issueId = existingIssue._id;
+      await testResult.save();
+      revalidatePath(`/tester/test-runs/${testRunId}`);
+      return;
+    }
     
     // Get highest issue number to increment
     const lastIssue = await Issue.findOne({ projectId }).sort({ issueNumber: -1 });
@@ -97,7 +106,7 @@ export async function submitTestResult(formData: FormData) {
       screenshots: testResult.screenshots,
       severity,
       status: "Open",
-      reportedBy: (session.user as any).id,
+      reportedBy: session.user.id,
     });
 
     testResult.issueId = issue._id;
@@ -105,7 +114,7 @@ export async function submitTestResult(formData: FormData) {
 
     await ActivityLog.create({
       projectId,
-      userId: (session.user as any).id,
+      userId: session.user.id,
       action: "Created",
       entityType: "Issue",
       entityId: issue._id,

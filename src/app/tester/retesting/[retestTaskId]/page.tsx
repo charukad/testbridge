@@ -5,17 +5,18 @@ import RetestTask from "@/domain/models/RetestTask";
 import Issue from "@/domain/models/Issue";
 import TestCase from "@/domain/models/TestCase";
 import Link from "next/link";
-import { ArrowLeft, Bug, AlertCircle, FileText } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import RetestForm from "./RetestForm";
 
-export default async function RetestTaskDetailPage({ params }: { params: { retestTaskId: string } }) {
+export default async function RetestTaskDetailPage({ params }: { params: Promise<{ retestTaskId: string }> }) {
   const session = await getServerSession(authOptions);
+  const { retestTaskId } = await params;
   await dbConnect();
   
   const userId = (session?.user as any)?.id;
   
   const task = await RetestTask.findOne({ 
-    _id: params.retestTaskId,
+    _id: retestTaskId,
     assignedTo: userId
   }).populate('projectId', 'name');
 
@@ -115,7 +116,7 @@ export default async function RetestTaskDetailPage({ params }: { params: { retes
         </div>
 
         <div className="lg:col-span-4">
-          <RetestForm retestTaskId={params.retestTaskId} currentStatus={task.status} />
+          <RetestForm retestTaskId={retestTaskId} currentStatus={task.status} />
         </div>
       </div>
     </div>

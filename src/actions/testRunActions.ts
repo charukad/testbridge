@@ -4,16 +4,12 @@ import dbConnect from "@/lib/mongoose";
 import TestRun from "@/domain/models/TestRun";
 import TestResult from "@/domain/models/TestResult";
 import ActivityLog from "@/domain/models/ActivityLog";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 export async function createTestRun(formData: FormData) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "Developer") {
-    throw new Error("Unauthorized");
-  }
+  const session = await requireRole("Developer");
 
   await dbConnect();
 
@@ -34,7 +30,7 @@ export async function createTestRun(formData: FormData) {
     environmentId,
     testCaseIds,
     assignedTo,
-    assignedBy: (session.user as any).id,
+    assignedBy: session.user.id,
     description,
     instructions,
     deadline: deadline ? new Date(deadline) : undefined,
@@ -43,7 +39,7 @@ export async function createTestRun(formData: FormData) {
 
   await ActivityLog.create({
     projectId,
-    userId: (session.user as any).id,
+    userId: session.user.id,
     action: "Created",
     entityType: "TestRun",
     entityId: testRun._id,
@@ -55,16 +51,13 @@ export async function createTestRun(formData: FormData) {
 }
 
 export async function submitTestRun(testRunId: string) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "Tester") {
-    throw new Error("Unauthorized");
-  }
+  const session = await requireRole("Tester");
 
   await dbConnect();
 
   const run = await TestRun.findOne({
     _id: testRunId,
-    assignedTo: (session.user as any).id,
+    assignedTo: session.user.id,
   });
 
   if (!run) {
@@ -80,7 +73,7 @@ export async function submitTestRun(testRunId: string) {
 
   await ActivityLog.create({
     projectId: run.projectId,
-    userId: (session.user as any).id,
+    userId: session.user.id,
     action: allDone ? "Completed" : "Submitted",
     entityType: "TestRun",
     entityId: run._id,

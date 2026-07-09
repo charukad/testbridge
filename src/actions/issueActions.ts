@@ -5,15 +5,11 @@ import Issue from "@/domain/models/Issue";
 import RetestTask from "@/domain/models/RetestTask";
 import TestResult from "@/domain/models/TestResult";
 import ActivityLog from "@/domain/models/ActivityLog";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 
 export async function updateIssueStatus(formData: FormData) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "Developer") {
-    throw new Error("Unauthorized");
-  }
+  const session = await requireRole("Developer");
 
   await dbConnect();
 
@@ -28,13 +24,13 @@ export async function updateIssueStatus(formData: FormData) {
   issue.status = status;
   if (developerNote) issue.developerNote = developerNote;
   if (fixNote) issue.fixNote = fixNote;
-  issue.assignedDeveloper = (session.user as any).id;
+  issue.assignedDeveloper = session.user.id;
 
   await issue.save();
 
   await ActivityLog.create({
     projectId: issue.projectId,
-    userId: (session.user as any).id,
+    userId: session.user.id,
     action: "Updated",
     entityType: "Issue",
     entityId: issue._id,
@@ -47,20 +43,30 @@ export async function updateIssueStatus(formData: FormData) {
     await issue.save();
 
     const testResult = await TestResult.findById(issue.testResultId);
+    if (!testResult) {
+      throw new Error("Original test result not found");
+    }
 
-    await RetestTask.create({
-      projectId: issue.projectId,
+    const existingOpenTask = await RetestTask.findOne({
       issueId: issue._id,
-      testRunId: issue.testRunId,
-      testCaseId: issue.testCaseId,
-      assignedTo: testResult.testerId, // original tester
-      assignedBy: (session.user as any).id,
-      status: "Pending",
+      status: { $in: ["Pending", "In Progress"] },
     });
+
+    if (!existingOpenTask) {
+      await RetestTask.create({
+        projectId: issue.projectId,
+        issueId: issue._id,
+        testRunId: issue.testRunId,
+        testCaseId: issue.testCaseId,
+        assignedTo: testResult.testerId,
+        assignedBy: session.user.id,
+        status: "Pending",
+      });
+    }
 
     await ActivityLog.create({
       projectId: issue.projectId,
-      userId: (session.user as any).id,
+      userId: session.user.id,
       action: "Created",
       entityType: "RetestTask",
       entityId: issue._id,

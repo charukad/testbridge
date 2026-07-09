@@ -1,5 +1,3 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import Issue from "@/domain/models/Issue";
 import TestCase from "@/domain/models/TestCase";
@@ -7,10 +5,11 @@ import Link from "next/link";
 import { ArrowLeft, Bug } from "lucide-react";
 import IssueStatusForm from "./IssueStatusForm";
 
-export default async function IssueDetailPage({ params }: { params: { issueId: string } }) {
+export default async function IssueDetailPage({ params }: { params: Promise<{ issueId: string }> }) {
+  const { issueId } = await params;
   await dbConnect();
   
-  const issue = await Issue.findById(params.issueId)
+  const issue = await Issue.findById(issueId)
     .populate('projectId', 'name')
     .populate('reportedBy', 'name email');
 
@@ -60,7 +59,7 @@ export default async function IssueDetailPage({ params }: { params: { issueId: s
               <div className="space-y-8">
                 <div>
                   <h3 className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider flex items-center">
-                    <span className="w-6 border-t border-slate-300 mr-2"></span> Tester's Note & Actual Result
+                    <span className="w-6 border-t border-slate-300 mr-2"></span> Tester&apos;s Note & Actual Result
                   </h3>
                   <div className="pl-8">
                     <div className="p-5 bg-red-50 rounded-lg text-sm text-red-900 whitespace-pre-wrap border border-red-100 shadow-sm leading-relaxed">

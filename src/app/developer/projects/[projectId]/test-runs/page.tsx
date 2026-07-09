@@ -6,12 +6,13 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, PlusCircle, PlayCircle, Clock, User, Server } from "lucide-react";
 
-export default async function TestRunsPage({ params }: { params: { projectId: string } }) {
-  const session = await getServerSession(authOptions);
+export default async function TestRunsPage({ params }: { params: Promise<{ projectId: string }> }) {
+  await getServerSession(authOptions);
+  const { projectId } = await params;
   await dbConnect();
   
   // Populate assignedTo to get the tester's name
-  const testRuns = await TestRun.find({ projectId: params.projectId })
+  const testRuns = await TestRun.find({ projectId })
     .populate('assignedTo', 'name email')
     .populate('environmentId', 'name')
     .sort({ createdAt: -1 })
@@ -21,14 +22,14 @@ export default async function TestRunsPage({ params }: { params: { projectId: st
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-end mb-8">
         <div>
-          <Link href={`/developer/projects/${params.projectId}`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-3">
+          <Link href={`/developer/projects/${projectId}`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-3">
             <ArrowLeft size={16} className="mr-1.5" />
             Back to Project
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">Test Runs</h1>
           <p className="text-sm text-slate-500 mt-1">Assign test cases to testers and track their progress.</p>
         </div>
-        <Link href={`/developer/projects/${params.projectId}/test-runs/new`}>
+        <Link href={`/developer/projects/${projectId}/test-runs/new`}>
           <Button className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 shadow-sm">
             <PlusCircle size={16} />
             Create Test Run
@@ -43,7 +44,7 @@ export default async function TestRunsPage({ params }: { params: { projectId: st
           </div>
           <h3 className="text-lg font-medium text-slate-900 mb-1">No test runs assigned</h3>
           <p className="text-sm text-slate-500 mb-6">Group test cases into a test run and assign it to a tester.</p>
-          <Link href={`/developer/projects/${params.projectId}/test-runs/new`}>
+          <Link href={`/developer/projects/${projectId}/test-runs/new`}>
             <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">Create Test Run</Button>
           </Link>
         </div>
@@ -114,7 +115,7 @@ export default async function TestRunsPage({ params }: { params: { projectId: st
                     run.status === 'In Progress' ? 'bg-indigo-500 w-1/2' : 'bg-slate-300 w-0'
                   }`}></div>
                 </div>
-                <Link href={`/developer/projects/${params.projectId}/test-runs/${run._id}`}>
+                <Link href={`/developer/projects/${projectId}/test-runs/${run._id}`}>
                   <button className="w-full bg-white border border-slate-300 hover:border-indigo-400 hover:text-indigo-600 text-slate-700 py-1.5 rounded-md text-sm font-medium transition-colors">
                     View Results →
                   </button>

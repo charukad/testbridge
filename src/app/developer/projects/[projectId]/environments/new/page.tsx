@@ -4,12 +4,15 @@ import { createEnvironment } from "@/actions/environmentActions";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { use } from "react";
 
-export default function NewEnvironmentPage({ params }: { params: { projectId: string } }) {
+export default function NewEnvironmentPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
+
   return (
     <div className="p-8 max-w-3xl mx-auto">
       <div className="mb-6">
-        <Link href={`/developer/projects/${params.projectId}/environments`} className="inline-flex items-center text-sm text-slate-500 hover:text-violet-600 transition-colors">
+        <Link href={`/developer/projects/${projectId}/environments`} className="inline-flex items-center text-sm text-slate-500 hover:text-violet-600 transition-colors">
           <ArrowLeft size={16} className="mr-1" />
           Back to Environments
         </Link>
@@ -22,7 +25,7 @@ export default function NewEnvironmentPage({ params }: { params: { projectId: st
         </div>
         
         <form action={createEnvironment} className="p-6 space-y-6">
-          <input type="hidden" name="projectId" value={params.projectId} />
+          <input type="hidden" name="projectId" value={projectId} />
           
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1">Environment Name *</label>
@@ -114,7 +117,7 @@ export default function NewEnvironmentPage({ params }: { params: { projectId: st
           </div>
           
           <div className="pt-4 flex justify-end gap-3">
-            <Link href={`/developer/projects/${params.projectId}/environments`}>
+            <Link href={`/developer/projects/${projectId}/environments`}>
               <Button type="button" variant="outline" className="border-slate-300 text-slate-700">Cancel</Button>
             </Link>
             <Button type="submit" className="bg-violet-600 hover:bg-violet-700 text-white">Create Environment</Button>

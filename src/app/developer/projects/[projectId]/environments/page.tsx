@@ -6,24 +6,25 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, PlusCircle, Globe, Smartphone, Lock, ExternalLink } from "lucide-react";
 
-export default async function EnvironmentsPage({ params }: { params: { projectId: string } }) {
-  const session = await getServerSession(authOptions);
+export default async function EnvironmentsPage({ params }: { params: Promise<{ projectId: string }> }) {
+  await getServerSession(authOptions);
+  const { projectId } = await params;
   await dbConnect();
   
-  const environments = await Environment.find({ projectId: params.projectId }).sort({ createdAt: -1 });
+  const environments = await Environment.find({ projectId }).sort({ createdAt: -1 });
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-end mb-8">
         <div>
-          <Link href={`/developer/projects/${params.projectId}`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-3">
+          <Link href={`/developer/projects/${projectId}`} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-3">
             <ArrowLeft size={16} className="mr-1.5" />
             Back to Project
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">Environments</h1>
           <p className="text-sm text-slate-500 mt-1">Manage testing environments, URLs, and test credentials.</p>
         </div>
-        <Link href={`/developer/projects/${params.projectId}/environments/new`}>
+        <Link href={`/developer/projects/${projectId}/environments/new`}>
           <Button className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 shadow-sm">
             <PlusCircle size={16} />
             New Environment
@@ -38,7 +39,7 @@ export default async function EnvironmentsPage({ params }: { params: { projectId
           </div>
           <h3 className="text-lg font-medium text-slate-900 mb-1">No environments</h3>
           <p className="text-sm text-slate-500 mb-6">Create a testing environment like Staging or Production.</p>
-          <Link href={`/developer/projects/${params.projectId}/environments/new`}>
+          <Link href={`/developer/projects/${projectId}/environments/new`}>
             <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">Create Environment</Button>
           </Link>
         </div>
