@@ -11,13 +11,15 @@ export default async function TesterTasks() {
   
   const userId = (session?.user as any)?.id;
   
-  const allRuns = await TestRun.find({ 
+  const allRunsRaw = await TestRun.find({ 
     assignedTo: userId,
   })
     .populate('projectId', 'name')
     .populate('environmentId', 'name')
     .sort({ createdAt: -1 })
     .lean();
+
+  const allRuns = JSON.parse(JSON.stringify(allRunsRaw));
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
