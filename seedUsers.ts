@@ -11,15 +11,33 @@ async function seed() {
 
   const hashedPassword = await bcrypt.hash("password123", 10);
 
-  // Auth checks 'passwordHash' field — must use correct field name
-  const result = await User.updateMany({}, { passwordHash: hashedPassword });
-  console.log(`Updated ${result.modifiedCount} users`);
-  console.log("All passwords have been reset to 'password123'");
+  // Delete any existing users first to avoid duplicates
+  await User.deleteMany({});
 
-  const users = await User.find({}, "name email role");
-  users.forEach((u: any) => console.log(`  ✅ ${u.role} | ${u.name} | ${u.email}`));
+  const users = await User.insertMany([
+    {
+      name: "Dasun",
+      email: "dasun@gmail.com",
+      passwordHash: hashedPassword,
+      role: "Developer",
+      isActive: true,
+    },
+    {
+      name: "Ashan",
+      email: "ashan@gmail.com",
+      passwordHash: hashedPassword,
+      role: "Tester",
+      isActive: true,
+    },
+  ]);
+
+  console.log(`Created ${users.length} users:`);
+  users.forEach((u: any) => console.log(`  ✅ ${u.role} | ${u.name} | ${u.email} | password: password123`));
 
   process.exit(0);
 }
 
-seed().catch(console.error);
+seed().catch((err) => {
+  console.error("Error:", err);
+  process.exit(1);
+});
