@@ -2,6 +2,8 @@
 
 import dbConnect from "@/lib/mongoose";
 import TestRun from "@/domain/models/TestRun";
+import TestResult from "@/domain/models/TestResult";
+import ActivityLog from "@/domain/models/ActivityLog";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -39,9 +41,19 @@ export async function createTestRun(formData: FormData) {
     status: "Pending",
   });
 
+  await ActivityLog.create({
+    projectId,
+    userId: (session.user as any).id,
+    action: "Created",
+    entityType: "TestRun",
+    entityId: testRun._id,
+    message: `Developer created test run "${name}" and assigned to tester.`,
+  });
+
   revalidatePath(`/developer/projects/${projectId}/test-runs`);
   redirect(`/developer/projects/${projectId}/test-runs`);
 }
+
 export async function submitTestRun(testRunId: string) {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any).role !== "Tester") {
@@ -50,17 +62,31 @@ export async function submitTestRun(testRunId: string) {
 
   await dbConnect();
 
-  const run = await TestRun.findOne({ 
-    _id: testRunId, 
-    assignedTo: (session.user as any).id 
+  const run = await TestRun.findOne({
+    _id: testRunId,
+    assignedTo: (session.user as any).id,
   });
 
   if (!run) {
     throw new Error("Test run not found or not assigned to you.");
   }
 
-  run.status = "Submitted";
+  // If all cases have results, mark Completed; otherwise Submitted
+  const resultCount = await TestResult.countDocuments({ testRunId });
+  const allDone = resultCount >= run.testCaseIds.length;
+
+  run.status = allDone ? "Completed" : "Submitted";
   await run.save();
 
+  await ActivityLog.create({
+    projectId: run.projectId,
+    userId: (session.user as any).id,
+    action: allDone ? "Completed" : "Submitted",
+    entityType: "TestRun",
+    entityId: run._id,
+    message: `Tester submitted test run "${run.name}". Status: ${run.status}.`,
+  });
+
+  revalidatePath("/tester/tasks");
   redirect("/tester/tasks");
 }

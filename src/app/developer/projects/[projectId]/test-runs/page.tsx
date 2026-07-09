@@ -107,12 +107,17 @@ export default async function TestRunsPage({ params }: { params: { projectId: st
                     {run.status === 'Completed' || run.status === 'Submitted' ? '100%' : run.status === 'In Progress' ? 'In Progress' : '0%'}
                   </p>
                 </div>
-                <div className="w-full bg-slate-200 rounded-full h-1.5">
+                <div className="w-full bg-slate-200 rounded-full h-1.5 mb-3">
                   <div className={`h-1.5 rounded-full transition-all duration-500 ${
                     run.status === 'Completed' || run.status === 'Submitted' ? 'bg-green-500 w-full' : 
                     run.status === 'In Progress' ? 'bg-indigo-500 w-1/2' : 'bg-slate-300 w-0'
                   }`}></div>
                 </div>
+                <Link href={`/developer/projects/${params.projectId}/test-runs/${run._id}`}>
+                  <button className="w-full bg-white border border-slate-300 hover:border-indigo-400 hover:text-indigo-600 text-slate-700 py-1.5 rounded-md text-sm font-medium transition-colors">
+                    View Results →
+                  </button>
+                </Link>
               </div>
             </div>
           ))}

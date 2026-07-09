@@ -5,11 +5,8 @@ import Link from "next/link";
 import { 
   LayoutDashboard, 
   FolderGit2, 
-  FileText,
-  PlayCircle,
   Bug, 
   BarChart3,
-  Settings,
   LogOut,
   Search,
   Bell
@@ -48,6 +45,10 @@ export default async function DeveloperLayout({
           <Link href="/developer/issues" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
             <Bug size={18} />
             <span>Issues</span>
+          </Link>
+          <Link href="/developer/reports" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
+            <BarChart3 size={18} />
+            <span>Reports</span>
           </Link>
         </nav>
       </aside>
