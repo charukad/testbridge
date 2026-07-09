@@ -46,14 +46,6 @@ export default async function TesterLayout({
             <RotateCcw size={18} />
             <span>Retesting</span>
           </Link>
-          <Link href="/tester/completed" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
-            <CheckCircle size={18} />
-            <span>Completed</span>
-          </Link>
-          <Link href="/tester/profile" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
-            <UserCircle size={18} />
-            <span>Profile</span>
-          </Link>
         </nav>
       </aside>
 

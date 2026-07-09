@@ -45,25 +45,9 @@ export default async function DeveloperLayout({
             <FolderGit2 size={18} />
             <span>Projects</span>
           </Link>
-          <Link href="/developer/test-cases" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
-            <FileText size={18} />
-            <span>Test Cases</span>
-          </Link>
-          <Link href="/developer/test-runs" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
-            <PlayCircle size={18} />
-            <span>Test Runs</span>
-          </Link>
           <Link href="/developer/issues" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
             <Bug size={18} />
             <span>Issues</span>
-          </Link>
-          <Link href="/developer/reports" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
-            <BarChart3 size={18} />
-            <span>Reports</span>
-          </Link>
-          <Link href="/developer/settings" className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 text-slate-700 hover:text-indigo-600 font-medium transition-colors">
-            <Settings size={18} />
-            <span>Settings</span>
           </Link>
         </nav>
       </aside>
