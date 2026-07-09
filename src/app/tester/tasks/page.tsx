@@ -1,9 +1,9 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongoose";
 import TestRun from "@/domain/models/TestRun";
 import Link from "next/link";
-import { Clock } from "lucide-react";
+import { redirect } from "next/navigation";
+import { Clock, AlertTriangle } from "lucide-react";
+import { getAppSession } from "@/lib/session";
 
 type TaskRun = {
   _id: string;
@@ -16,20 +16,44 @@ type TaskRun = {
 };
 
 export default async function TesterTasks() {
-  const session = await getServerSession(authOptions);
-  await dbConnect();
-  
-  const userId = (session?.user as any)?.id;
-  
-  const allRunsRaw = await TestRun.find({ 
-    assignedTo: userId,
-  })
-    .populate('projectId', 'name')
-    .populate('environmentId', 'name')
-    .sort({ createdAt: -1 })
-    .lean();
+  const session = await getAppSession();
 
-  const allRuns = JSON.parse(JSON.stringify(allRunsRaw)) as TaskRun[];
+  if (!session || session.user.role !== "Tester") {
+    redirect("/login");
+  }
+  
+  const userId = session.user.id;
+  let allRuns: TaskRun[] = [];
+  
+  try {
+    await dbConnect();
+
+    const allRunsRaw = await TestRun.find({ 
+      assignedTo: userId,
+    })
+      .populate("projectId", "name")
+      .populate("environmentId", "name")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    allRuns = JSON.parse(JSON.stringify(allRunsRaw)) as TaskRun[];
+  } catch (error) {
+    console.error("Tester tasks load error:", error);
+
+    return (
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white border border-red-200 rounded-xl shadow-sm p-8 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-50 text-red-500 mb-4">
+            <AlertTriangle size={24} />
+          </div>
+          <h1 className="text-xl font-bold text-slate-900">Could not load tasks</h1>
+          <p className="text-sm text-slate-500 mt-2">
+            Please reload the page. If it keeps happening, the server logs will show the exact database error.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
