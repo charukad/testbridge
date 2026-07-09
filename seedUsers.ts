@@ -10,8 +10,15 @@ async function seed() {
   console.log("Connected to DB");
 
   const hashedPassword = await bcrypt.hash("password123", 10);
-  await User.updateMany({}, { password: hashedPassword });
+
+  // Auth checks 'passwordHash' field — must use correct field name
+  const result = await User.updateMany({}, { passwordHash: hashedPassword });
+  console.log(`Updated ${result.modifiedCount} users`);
   console.log("All passwords have been reset to 'password123'");
+
+  const users = await User.find({}, "name email role");
+  users.forEach((u: any) => console.log(`  ✅ ${u.role} | ${u.name} | ${u.email}`));
+
   process.exit(0);
 }
 
